@@ -1,0 +1,22 @@
+[package]
+name = "contour-isobands"
+version = "0.1.0"
+authors = ["Matthieu Viry <matthieu.viry@cnrs.fr>"]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+
+description = "Compute isobands and contour polygons (using marching squares algorithm)."
+repository = "https://github.com/mthh/contour-isobands-rs"
+homepage = "https://github.com/mthh/contour-isobands-rs"
+documentation = "https://docs.rs/contour-isobands"
+readme = "README.md"
+keywords = ["contour", "polygon", "isobands", "marching-squares", "geojson"]
+
+[dependencies]
+geojson = { version = ">=0.16, <=0.24", optional = true }
+geo-types= { version = "0.7" }
+serde_json = "^1.0"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
