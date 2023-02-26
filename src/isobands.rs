@@ -1,22 +1,29 @@
+use crate::errors::{new_error, Error, ErrorKind, Result};
 use crate::polygons::trace_band_paths;
 use crate::shape_coordinates::prepare_cell;
-use geo_types::{LineString, MultiPolygon, Point, Polygon};
-use std::str::FromStr;
+use geo_types::{Coord, MultiPolygon, Point, Polygon};
+// use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pt(pub f64, pub f64);
 
+impl From<Pt> for Coord<f64> {
+    fn from(pt: Pt) -> Self {
+        Coord { x: pt.0, y: pt.1 }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Cell {
-    pub cval: i32,
-    // pub polygons: Vec<Vec<Pt>>,
-    pub edges: Edges,
+    pub cval: usize,
     pub x0: f64,
     pub x1: f64,
     pub x2: f64,
     pub x3: f64,
-    pub x: usize,
-    pub y: usize,
+    pub edges: Edges,
+    // pub polygons: Vec<Vec<Pt>>,
+    // pub x: usize,
+    // pub y: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -31,32 +38,32 @@ pub(crate) enum EnterType {
     TR,
 }
 
-impl FromStr for EnterType {
-    type Err = ();
+// impl FromStr for EnterType {
+//     type Err = Error;
+//
+//     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+//         match s {
+//             "TL" => Ok(EnterType::TL),
+//             "LT" => Ok(EnterType::LT),
+//             "LB" => Ok(EnterType::LB),
+//             "BL" => Ok(EnterType::BL),
+//             "BR" => Ok(EnterType::BR),
+//             "RB" => Ok(EnterType::RB),
+//             "RT" => Ok(EnterType::RT),
+//             "TR" => Ok(EnterType::TR),
+//             _ => Err(new_error(ErrorKind::UnknownEnterType)),
+//         }
+//     }
+// }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "TL" => Ok(EnterType::TL),
-            "LT" => Ok(EnterType::LT),
-            "LB" => Ok(EnterType::LB),
-            "BL" => Ok(EnterType::BL),
-            "BR" => Ok(EnterType::BR),
-            "RB" => Ok(EnterType::RB),
-            "RT" => Ok(EnterType::RT),
-            "TR" => Ok(EnterType::TR),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct MoveInfo {
     pub x: i32,
     pub y: i32,
     pub enter: EnterType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct Corner {
     pub path: Vec<Pt>,
     pub move_info: MoveInfo,
@@ -102,35 +109,39 @@ impl Edges {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Settings {
     pub min_v: f64,
     pub max_v: f64,
 }
 
-pub fn isobands(data: Vec<Vec<f64>>, min_v: Vec<f64>, bandwidth: Vec<f64>) -> Vec<Vec<Vec<Pt>>> {
+pub fn isobands(data: &[Vec<f64>], min_v: &[f64], bandwidth: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
     if min_v.len() != bandwidth.len() {
         panic!("min_v and bandwidth must have the same length");
     }
-    let mut res = Vec::with_capacity(min_v.len());
     let lj = data.len();
     let li = data[0].len();
 
-    min_v.iter().zip(bandwidth.iter()).for_each(|(min, bw)| {
-        let opt = Settings {
-            min_v: *min,
-            max_v: *min + *bw,
-        };
-        let mut cell_grid = Vec::with_capacity(li);
-        for i in 0..li - 1 {
-            cell_grid.push(Vec::with_capacity(lj));
-            for j in 0..lj - 1 {
-                cell_grid[i].push(prepare_cell(i, j, &data, &opt));
+    let res = min_v
+        .iter()
+        .zip(bandwidth.iter())
+        .map(|(min, bw)| -> Result<Vec<Vec<Pt>>> {
+            let opt = Settings {
+                min_v: *min,
+                max_v: *min + *bw,
+            };
+            let mut cell_grid = Vec::with_capacity(li);
+            for i in 0..li - 1 {
+                cell_grid.push(Vec::with_capacity(lj));
+                for j in 0..lj - 1 {
+                    cell_grid[i].push(prepare_cell(i, j, data, &opt)?);
+                }
             }
-        }
-        println!("cell_grid: {:?}", cell_grid);
-        let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt);
-        res.push(band_polygons);
-    });
+            // println!("cell_grid: {:?}", cell_grid);
+            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+            Ok(band_polygons)
+        })
+        .collect::<Result<Vec<Vec<Vec<Pt>>>>>()?;
 
-    res
+    Ok(res)
 }

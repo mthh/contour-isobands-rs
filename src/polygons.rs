@@ -1,7 +1,7 @@
-use crate::isobands::{Cell, Corner, EnterType, Pt, Settings};
-use std::str::FromStr;
+use crate::errors::{new_error, ErrorKind, Result};
+use crate::isobands::{Cell, EnterType, Pt, Settings};
 
-fn require_frame(data: &Vec<Vec<f64>>, lowerbound: f64, upperbound: f64) -> bool {
+fn require_frame(data: &[Vec<f64>], lowerbound: f64, upperbound: f64) -> bool {
     let mut frame_required: bool = true;
     let rows = data.len();
     let cols = data[0].len();
@@ -83,15 +83,24 @@ fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
 }
 
 pub(crate) fn trace_band_paths(
-    data: &Vec<Vec<f64>>,
+    data: &[Vec<f64>],
     cell_grid: &mut Vec<Vec<Option<Cell>>>,
     opt: &Settings,
-) -> Vec<Vec<Pt>> {
+) -> Result<Vec<Vec<Pt>>> {
     let mut polygons: Vec<Vec<Pt>> = Vec::new();
     let rows = data.len() - 1;
     let cols = data[0].len() - 1;
 
-    let available_starts = vec!["BL", "LB", "LT", "TL", "TR", "RT", "RB", "BR"];
+    let available_starts = [
+        EnterType::BL,
+        EnterType::LB,
+        EnterType::LT,
+        EnterType::TL,
+        EnterType::TR,
+        EnterType::RT,
+        EnterType::RB,
+        EnterType::BR,
+    ];
 
     let add_x = [0, -1, 0, 1];
     let add_y = [-1, 0, 1, 0];
@@ -122,14 +131,12 @@ pub(crate) fn trace_band_paths(
 
     for i in 0..cell_grid.len() {
         for j in 0..cell_grid[i].len() {
-            // let mut next_edge;
             for nextedge in &available_starts {
-                println!("nextedge: {}", nextedge);
-                let start_type = EnterType::from_str(nextedge).unwrap();
-                if let Some(cd) = &cell_grid[i][j] {
-                    if let Some(edge) = cd.edges.get(&start_type) {
+                // println!("nextedge: {:?}", nextedge);
+                if let Some(cg) = &cell_grid[i][j] {
+                    if let Some(edge) = cg.edges.get(nextedge) {
                         let mut path = Vec::new();
-                        let mut enter = EnterType::from_str(nextedge).unwrap();
+                        let mut enter = nextedge.clone();
 
                         let mut x = i as i32;
                         let mut y = j as i32;
@@ -145,11 +152,11 @@ pub(crate) fn trace_band_paths(
                                 || cell_grid.get(x as usize).is_none()
                                 || cell_grid[x as usize].get(y as usize).is_none()
                             {
-                                panic!("Out of bounds");
+                                return Err(new_error(ErrorKind::OutOfBounds));
                             }
 
                             let mut _cc = cell_grid[x as usize][y as usize].as_mut();
-                            println!("x: {}, y: {}, enter: {:?}, cc: {:?}", x, y, enter, _cc);
+                            // println!("x: {}, y: {}, enter: {:?}, cc: {:?}", x, y, enter, _cc);
                             if _cc.is_none() {
                                 break;
                             }
@@ -159,15 +166,15 @@ pub(crate) fn trace_band_paths(
                             if _ee.is_none() {
                                 break;
                             }
-                            let mut ee = _ee.unwrap();
+                            let mut ee = &_ee.unwrap();
 
                             /* add last point of edge to path array, since we extend a polygon */
                             let point = Pt(ee.path[1].0 + x as f64, ee.path[1].1 + y as f64);
                             path.push(point);
 
-                            enter = ee.move_info.enter;
-                            x = x + ee.move_info.x;
-                            y = y + ee.move_info.y;
+                            enter = ee.move_info.enter.clone();
+                            x += ee.move_info.x;
+                            y += ee.move_info.y;
 
                             /* handle out-of-grid moves */
                             if usize::try_from(x).is_err()
@@ -175,7 +182,7 @@ pub(crate) fn trace_band_paths(
                                 || cell_grid.get(x as usize).is_none()
                                 || cell_grid[x as usize].get(y as usize).is_none()
                             {
-                                let mut dir = 0;
+                                let mut dir;
                                 let mut count = 0;
 
                                 if x == cols as i32 {
@@ -191,41 +198,39 @@ pub(crate) fn trace_band_paths(
                                     y += 1;
                                     dir = 1; /* move left */
                                 } else {
-                                    panic!("Unexpected out-of-grid move");
+                                    return Err(new_error(ErrorKind::UnexpectedOutOfGridMove));
                                 }
 
-                                if x == i as i32 && y == j as i32 && dir == entry_dir(&start_type) {
-                                    finalized = true;
-                                    enter = start_type.clone();
+                                if x == i as i32 && y == j as i32 && dir == entry_dir(nextedge) {
+                                    // finalized = true;
+                                    // enter = nextedge.clone();
                                     break;
                                 }
 
                                 loop {
-                                    println!("foo");
+                                    // println!("loop - dir = {}", dir);
                                     let mut found_entry = false;
                                     if count > 4 {
                                         println!("Direction change counter overflow! This should never happen!");
                                         break;
                                     }
 
-                                    if !usize::try_from(x).is_err()
-                                        && !usize::try_from(y).is_err()
-                                        && !cell_grid.get(x as usize).is_none()
-                                        && !cell_grid[x as usize].get(y as usize).is_none()
+                                    if usize::try_from(x).is_ok()
+                                        && usize::try_from(y).is_ok()
+                                        && cell_grid.get(x as usize).is_some()
+                                        && cell_grid[x as usize].get(y as usize).is_some()
                                     // && !cell_grid[x as usize][y as usize].is_none()
                                     {
                                         cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
 
                                         /* check for re-entry */
                                         for s in 0..valid_entries[dir].len() {
-                                            let ve = valid_entries[dir][s].clone();
-                                            if cc.edges.get(&ve).is_some() {
+                                            let ve = &valid_entries[dir][s];
+                                            if cc.edges.get(ve).is_some() {
                                                 /* found re-entry */
-                                                ee = cc.edges.get(&ve).unwrap().clone();
-                                                path.push(entry_coordinate(
-                                                    x as i32, y as i32, dir, &ee.path,
-                                                ));
-                                                enter = ve;
+                                                ee = cc.edges.get(ve).unwrap();
+                                                path.push(entry_coordinate(x, y, dir, &ee.path));
+                                                enter = ve.clone();
                                                 found_entry = true;
                                                 break;
                                             }
@@ -235,11 +240,11 @@ pub(crate) fn trace_band_paths(
                                     if found_entry {
                                         break;
                                     } else {
-                                        path.push(skip_coordinate(x as i32, y as i32, dir));
+                                        path.push(skip_coordinate(x, y, dir));
                                         x += add_x[dir];
                                         y += add_y[dir];
 
-                                        /* change direction if we'e moved out of grid again */
+                                        /* change direction if we moved out of grid again */
                                         if usize::try_from(x).is_err()
                                             || usize::try_from(y).is_err()
                                             || cell_grid.get(x as usize).is_none()
@@ -260,21 +265,20 @@ pub(crate) fn trace_band_paths(
 
                                         if x == i as i32
                                             && y == j as i32
-                                            && dir == entry_dir(&start_type)
+                                            && dir == entry_dir(nextedge)
                                         {
                                             finalized = true;
-                                            enter = start_type.clone();
+                                            enter = nextedge.clone();
                                             break;
                                         }
                                     }
-                                    // count += 1;
                                 }
                             }
                         }
 
                         if path[path.len() - 1].0 != origin.0 || path[path.len() - 1].1 != origin.1
                         {
-                            path.push(origin.clone());
+                            path.push(origin);
                         }
 
                         polygons.push(path);
@@ -284,5 +288,5 @@ pub(crate) fn trace_band_paths(
         }
     }
 
-    polygons
+    Ok(polygons)
 }

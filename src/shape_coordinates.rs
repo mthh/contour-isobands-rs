@@ -1,3 +1,4 @@
+use crate::errors::{new_error, ErrorKind, Result};
 use crate::isobands::{Cell, Corner, Edges, EnterType, MoveInfo, Pt, Settings};
 
 fn interpolate_linear_ab(a: f64, b: f64, v0: f64, v1: f64) -> f64 {
@@ -45,7 +46,7 @@ fn compute_center_average(bl: f64, br: f64, tl: f64, tr: f64, min_v: f64, max_v:
 
 /// Below are lookup for shapes, ported from https://github.com/RaumZeit/MarchingSquares.js/blob/master/src/isobands.js
 
-pub(crate) fn square(cell: &mut Cell, opt: &Settings) {
+pub(crate) fn square(_cell: &mut Cell, _opt: &Settings) {
     // This is a no-op due to how we are tracing the polygons
     // cell.polygons.push(
     //     vec![
@@ -248,7 +249,7 @@ pub(crate) fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
         move_info: MoveInfo {
             x: -1,
             y: 0,
-            enter: EnterType::LB,
+            enter: EnterType::RB,
         },
     });
 
@@ -273,7 +274,7 @@ pub(crate) fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
 
 pub(crate) fn tetragon_br(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
-    let bottomright = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
+    let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
@@ -287,7 +288,7 @@ pub(crate) fn tetragon_br(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomright, 1.)],
+        path: vec![Pt(1., rightbottom), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -1276,9 +1277,9 @@ pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
 pub(crate) fn prepare_cell(
     x: usize,
     y: usize,
-    data: &Vec<Vec<f64>>,
+    data: &[Vec<f64>],
     opt: &Settings,
-) -> Option<Cell> {
+) -> Result<Option<Cell>> {
     /*  compose the 4-trit corner representation */
     let mut cval = 0;
     let x3 = *data
@@ -1296,7 +1297,7 @@ pub(crate) fn prepare_cell(
     let x0 = *data.get(y).and_then(|row| row.get(x)).unwrap_or(&f64::NAN);
 
     if x0.is_nan() || x1.is_nan() || x2.is_nan() || x3.is_nan() {
-        return None;
+        return Ok(None);
     }
 
     /*
@@ -1369,8 +1370,8 @@ pub(crate) fn prepare_cell(
     let mut center_avg: u8 = 0;
 
     let mut cell = Cell {
-        x,
-        y,
+        // x,
+        // y,
         cval,
         x0,
         x1,
@@ -1388,426 +1389,427 @@ pub(crate) fn prepare_cell(
         },
         // polygons: Vec::new(),
     };
-    println!("cval: {}", cval);
-    match cval {
-        0 => return None,
-        170 => return None,
+
+    //println!("cval: {}", cval);
+    match cell.cval {
+        0 | 170 => {} /* 0000 or 2222 */
         85 => {
-            square(&mut cell, &opt);
+            /* 1111 */
+            square(&mut cell, opt);
         }
         169 => {
             /* 2221 */
-            triangle_bl(&mut cell, &opt);
+            triangle_bl(&mut cell, opt);
         }
         166 => {
             /* 2212 */
-            triangle_br(&mut cell, &opt);
+            triangle_br(&mut cell, opt);
         }
         154 => {
             /* 2122 */
-            triangle_tr(&mut cell, &opt);
+            triangle_tr(&mut cell, opt);
         }
         106 => {
             /* 1222 */
-            triangle_tl(&mut cell, &opt);
+            triangle_tl(&mut cell, opt);
         }
         1 => {
             /* 0001 */
-            triangle_bl(&mut cell, &opt);
+            triangle_bl(&mut cell, opt);
         }
         4 => {
             /* 0010 */
-            triangle_br(&mut cell, &opt);
+            triangle_br(&mut cell, opt);
         }
         16 => {
             /* 0100 */
-            triangle_tr(&mut cell, &opt);
+            triangle_tr(&mut cell, opt);
         }
         64 => {
             /* 1000 */
-            triangle_tl(&mut cell, &opt);
+            triangle_tl(&mut cell, opt);
         }
 
         /* single trapezoid cases */
         168 => {
             /* 2220 */
-            tetragon_bl(&mut cell, &opt);
+            tetragon_bl(&mut cell, opt);
         }
         162 => {
             /* 2202 */
-            tetragon_br(&mut cell, &opt);
+            tetragon_br(&mut cell, opt);
         }
         138 => {
             /* 2022 */
-            tetragon_tr(&mut cell, &opt);
+            tetragon_tr(&mut cell, opt);
         }
         42 => {
             /* 0222 */
-            tetragon_tl(&mut cell, &opt);
+            tetragon_tl(&mut cell, opt);
         }
         2 => {
             /* 0002 */
-            tetragon_bl(&mut cell, &opt);
+            tetragon_bl(&mut cell, opt);
         }
         8 => {
             /* 0020 */
-            tetragon_br(&mut cell, &opt);
+            tetragon_br(&mut cell, opt);
         }
         32 => {
             /* 0200 */
-            tetragon_tr(&mut cell, &opt);
+            tetragon_tr(&mut cell, opt);
         }
         128 => {
             /* 2000 */
-            tetragon_tl(&mut cell, &opt);
+            tetragon_tl(&mut cell, opt);
         }
 
         /* single rectangle cases */
         5 => {
             /* 0011 */
-            tetragon_b(&mut cell, &opt);
+            tetragon_b(&mut cell, opt);
         }
         20 => {
             /* 0110 */
-            tetragon_r(&mut cell, &opt);
+            tetragon_r(&mut cell, opt);
         }
         80 => {
             /* 1100 */
-            tetragon_t(&mut cell, &opt);
+            tetragon_t(&mut cell, opt);
         }
         65 => {
             /* 1001 */
-            tetragon_l(&mut cell, &opt);
+            tetragon_l(&mut cell, opt);
         }
         165 => {
             /* 2211 */
-            tetragon_b(&mut cell, &opt);
+            tetragon_b(&mut cell, opt);
         }
         150 => {
             /* 2112 */
-            tetragon_r(&mut cell, &opt);
+            tetragon_r(&mut cell, opt);
         }
         90 => {
             /* 1122 */
-            tetragon_t(&mut cell, &opt);
+            tetragon_t(&mut cell, opt);
         }
         105 => {
             /* 1221 */
-            tetragon_l(&mut cell, &opt);
+            tetragon_l(&mut cell, opt);
         }
         160 => {
             /* 2200 */
-            tetragon_lr(&mut cell, &opt);
+            tetragon_lr(&mut cell, opt);
         }
         130 => {
             /* 2002 */
-            tetragon_tb(&mut cell, &opt);
+            tetragon_tb(&mut cell, opt);
         }
         10 => {
             /* 0022 */
-            tetragon_lr(&mut cell, &opt);
+            tetragon_lr(&mut cell, opt);
         }
         40 => {
             /* 0220 */
-            tetragon_tb(&mut cell, &opt);
+            tetragon_tb(&mut cell, opt);
         }
 
         /* single pentagon cases */
         101 => {
             /* 1211 */
-            pentagon_tr(&mut cell, &opt);
+            pentagon_tr(&mut cell, opt);
         }
         149 => {
             /* 2111 */
-            pentagon_tl(&mut cell, &opt);
+            pentagon_tl(&mut cell, opt);
         }
         86 => {
             /* 1112 */
-            pentagon_bl(&mut cell, &opt);
+            pentagon_bl(&mut cell, opt);
         }
         89 => {
             /* 1121 */
-            pentagon_br(&mut cell, &opt);
+            pentagon_br(&mut cell, opt);
         }
         69 => {
             /* 1011 */
-            pentagon_tr(&mut cell, &opt);
+            pentagon_tr(&mut cell, opt);
         }
         21 => {
             /* 0111 */
-            pentagon_tl(&mut cell, &opt);
+            pentagon_tl(&mut cell, opt);
         }
         84 => {
             /* 1110 */
-            pentagon_bl(&mut cell, &opt);
+            pentagon_bl(&mut cell, opt);
         }
         81 => {
             /* 1101 */
-            pentagon_br(&mut cell, &opt);
+            pentagon_br(&mut cell, opt);
         }
         96 => {
             /* 1200 */
-            pentagon_tr_rl(&mut cell, &opt);
+            pentagon_tr_rl(&mut cell, opt);
         }
         24 => {
             /* 0120 */
-            pentagon_rb_bt(&mut cell, &opt);
+            pentagon_rb_bt(&mut cell, opt);
         }
         6 => {
             /* 0012 */
-            pentagon_bl_lr(&mut cell, &opt);
+            pentagon_bl_lr(&mut cell, opt);
         }
         129 => {
             /* 2001 */
-            pentagon_lt_tb(&mut cell, &opt);
+            pentagon_lt_tb(&mut cell, opt);
         }
         74 => {
             /* 1022 */
-            pentagon_tr_rl(&mut cell, &opt);
+            pentagon_tr_rl(&mut cell, opt);
         }
         146 => {
             /* 2102 */
-            pentagon_rb_bt(&mut cell, &opt);
+            pentagon_rb_bt(&mut cell, opt);
         }
         164 => {
             /* 2210 */
-            pentagon_bl_lr(&mut cell, &opt);
+            pentagon_bl_lr(&mut cell, opt);
         }
         41 => {
             /* 0221 */
-            pentagon_lt_tb(&mut cell, &opt);
+            pentagon_lt_tb(&mut cell, opt);
         }
         66 => {
             /* 1002 */
-            pentagon_bl_tb(&mut cell, &opt);
+            pentagon_bl_tb(&mut cell, opt);
         }
         144 => {
             /* 2100 */
-            pentagon_lt_rl(&mut cell, &opt);
+            pentagon_lt_rl(&mut cell, opt);
         }
         36 => {
             /* 0210 */
-            pentagon_tr_bt(&mut cell, &opt);
+            pentagon_tr_bt(&mut cell, opt);
         }
         9 => {
             /* 0021 */
-            pentagon_rb_lr(&mut cell, &opt);
+            pentagon_rb_lr(&mut cell, opt);
         }
         104 => {
             /* 1220 */
-            pentagon_bl_tb(&mut cell, &opt);
+            pentagon_bl_tb(&mut cell, opt);
         }
         26 => {
             /* 0122 */
-            pentagon_lt_rl(&mut cell, &opt);
+            pentagon_lt_rl(&mut cell, opt);
         }
         134 => {
             /* 2012 */
-            pentagon_tr_bt(&mut cell, &opt);
+            pentagon_tr_bt(&mut cell, opt);
         }
         161 => {
             /* 2201 */
-            pentagon_rb_lr(&mut cell, &opt);
+            pentagon_rb_lr(&mut cell, opt);
         }
 
         /* single hexagon cases */
         37 => {
             /* 0211 */
-            hexagon_lt_tr(&mut cell, &opt);
+            hexagon_lt_tr(&mut cell, opt);
         }
         148 => {
             /* 2110 */
-            hexagon_bl_lt(&mut cell, &opt);
+            hexagon_bl_lt(&mut cell, opt);
         }
         82 => {
             /* 1102 */
-            hexagon_bl_rb(&mut cell, &opt);
+            hexagon_bl_rb(&mut cell, opt);
         }
         73 => {
             /* 1021 */
-            hexagon_tr_rb(&mut cell, &opt);
+            hexagon_tr_rb(&mut cell, opt);
         }
         133 => {
             /* 2011 */
-            hexagon_lt_tr(&mut cell, &opt);
+            hexagon_lt_tr(&mut cell, opt);
         }
         22 => {
             /* 0112 */
-            hexagon_bl_lt(&mut cell, &opt);
+            hexagon_bl_lt(&mut cell, opt);
         }
         88 => {
             /* 1120 */
-            hexagon_bl_rb(&mut cell, &opt);
+            hexagon_bl_rb(&mut cell, opt);
         }
         97 => {
             /* 1201 */
-            hexagon_tr_rb(&mut cell, &opt);
+            hexagon_tr_rb(&mut cell, opt);
         }
         145 => {
             /* 2101 */
-            hexagon_lt_rb(&mut cell, &opt);
+            hexagon_lt_rb(&mut cell, opt);
         }
         25 => {
             /* 0121 */
-            hexagon_lt_rb(&mut cell, &opt);
+            hexagon_lt_rb(&mut cell, opt);
         }
         70 => {
             /* 1012 */
-            hexagon_bl_tr(&mut cell, &opt);
+            hexagon_bl_tr(&mut cell, opt);
         }
         100 => {
             /* 1210 */
-            hexagon_bl_tr(&mut cell, &opt);
+            hexagon_bl_tr(&mut cell, opt);
         }
         17 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_bl(&mut cell, &opt);
-                triangle_tr(&mut cell, &opt);
+                triangle_bl(&mut cell, opt);
+                triangle_tr(&mut cell, opt);
             } else {
-                hexagon_lt_rb(&mut cell, &opt);
+                hexagon_lt_rb(&mut cell, opt);
             }
         }
         68 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_tl(&mut cell, &opt);
-                triangle_br(&mut cell, &opt);
+                triangle_tl(&mut cell, opt);
+                triangle_br(&mut cell, opt);
             } else {
-                hexagon_bl_tr(&mut cell, &opt);
+                hexagon_bl_tr(&mut cell, opt);
             }
         }
         153 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_bl(&mut cell, &opt);
-                triangle_tr(&mut cell, &opt);
+                triangle_bl(&mut cell, opt);
+                triangle_tr(&mut cell, opt);
             } else {
-                hexagon_lt_rb(&mut cell, &opt);
+                hexagon_lt_rb(&mut cell, opt);
             }
         }
         102 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_tl(&mut cell, &opt);
-                triangle_br(&mut cell, &opt);
+                triangle_tl(&mut cell, opt);
+                triangle_br(&mut cell, opt);
             } else {
-                hexagon_bl_tr(&mut cell, &opt);
+                hexagon_bl_tr(&mut cell, opt);
             }
         }
         152 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_tr(&mut cell, &opt);
-                tetragon_bl(&mut cell, &opt);
+                triangle_tr(&mut cell, opt);
+                tetragon_bl(&mut cell, opt);
             } else {
-                heptagon_tr(&mut cell, &opt);
+                heptagon_tr(&mut cell, opt);
             }
         }
         137 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_bl(&mut cell, &opt);
-                tetragon_tr(&mut cell, &opt);
+                triangle_bl(&mut cell, opt);
+                tetragon_tr(&mut cell, opt);
             } else {
-                heptagon_bl(&mut cell, &opt);
+                heptagon_bl(&mut cell, opt);
             }
         }
         98 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_tl(&mut cell, &opt);
-                tetragon_br(&mut cell, &opt);
+                triangle_tl(&mut cell, opt);
+                tetragon_br(&mut cell, opt);
             } else {
-                heptagon_tl(&mut cell, &opt);
+                heptagon_tl(&mut cell, opt);
             }
         }
         38 => {
             compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 0 */
             if center_avg == 2 {
-                triangle_br(&mut cell, &opt);
-                tetragon_tl(&mut cell, &opt);
+                triangle_br(&mut cell, opt);
+                tetragon_tl(&mut cell, opt);
             } else {
-                heptagon_br(&mut cell, &opt);
+                heptagon_br(&mut cell, opt);
             }
         }
         18 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_tr(&mut cell, &opt);
-                tetragon_bl(&mut cell, &opt);
+                triangle_tr(&mut cell, opt);
+                tetragon_bl(&mut cell, opt);
             } else {
-                heptagon_tr(&mut cell, &opt);
+                heptagon_tr(&mut cell, opt);
             }
         }
         33 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_bl(&mut cell, &opt);
-                tetragon_tr(&mut cell, &opt);
+                triangle_bl(&mut cell, opt);
+                tetragon_tr(&mut cell, opt);
             } else {
-                heptagon_bl(&mut cell, &opt);
+                heptagon_bl(&mut cell, opt);
             }
         }
         72 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_tl(&mut cell, &opt);
-                tetragon_br(&mut cell, &opt);
+                triangle_tl(&mut cell, opt);
+                tetragon_br(&mut cell, opt);
             } else {
-                heptagon_tl(&mut cell, &opt);
+                heptagon_tl(&mut cell, opt);
             }
         }
         132 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             /* should never be center_avg === 2 */
             if center_avg == 0 {
-                triangle_br(&mut cell, &opt);
-                tetragon_tl(&mut cell, &opt);
+                triangle_br(&mut cell, opt);
+                tetragon_tl(&mut cell, opt);
             } else {
-                heptagon_br(&mut cell, &opt);
+                heptagon_br(&mut cell, opt);
             }
         }
         136 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
             if center_avg == 0 {
-                tetragon_tl(&mut cell, &opt);
-                tetragon_br(&mut cell, &opt);
+                tetragon_tl(&mut cell, opt);
+                tetragon_br(&mut cell, opt);
             } else if center_avg == 1 {
-                octagon(&mut cell, &opt);
+                octagon(&mut cell, opt);
             } else {
-                tetragon_bl(&mut cell, &opt);
-                tetragon_tr(&mut cell, &opt);
+                tetragon_bl(&mut cell, opt);
+                tetragon_tr(&mut cell, opt);
             }
         }
         34 => {
             center_avg = compute_center_average(x0, x1, x2, x3, opt.min_v, opt.max_v);
 
             if center_avg == 0 {
-                tetragon_bl(&mut cell, &opt);
-                tetragon_tr(&mut cell, &opt);
+                tetragon_bl(&mut cell, opt);
+                tetragon_tr(&mut cell, opt);
             } else if center_avg == 1 {
-                octagon(&mut cell, &opt);
+                octagon(&mut cell, opt);
             } else {
-                tetragon_tl(&mut cell, &opt);
-                tetragon_br(&mut cell, &opt);
+                tetragon_tl(&mut cell, opt);
+                tetragon_br(&mut cell, opt);
             }
         }
-        _ => panic!("Unexpected cval value : {}", cval),
+        _ => return Err(new_error(ErrorKind::UnexpectedCVAL)),
     };
 
-    Some(cell)
+    Ok(Some(cell))
 }
 
 mod test {

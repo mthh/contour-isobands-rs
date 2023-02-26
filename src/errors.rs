@@ -33,6 +33,10 @@ pub enum ErrorKind {
     BadDimension,
     JsonError(serde_json::error::Error),
     Unexpected,
+    UnknownEnterType,
+    UnexpectedCVAL,
+    UnexpectedOutOfGridMove,
+    OutOfBounds,
 }
 
 impl From<serde_json::error::Error> for Error {
@@ -45,8 +49,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match *self.0 {
             ErrorKind::JsonError(ref err) => Some(err),
-            ErrorKind::BadDimension => None,
-            ErrorKind::Unexpected => None,
+            _ => None,
         }
     }
 }
@@ -60,6 +63,10 @@ impl fmt::Display for Error {
                 "The length of provided values doesn't match the (dx, dy) dimensions of the grid"
             ),
             ErrorKind::Unexpected => write!(f, "Unexpected error while computing contours"),
+            ErrorKind::UnexpectedCVAL => write!(f, "Unexpected cval"),
+            ErrorKind::UnknownEnterType => write!(f, "Unknown enter type"),
+            ErrorKind::OutOfBounds => write!(f, "Out of bounds"),
+            ErrorKind::UnexpectedOutOfGridMove => write!(f, "Unexpected out of grid move"),
         }
     }
 }
