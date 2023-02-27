@@ -6,11 +6,11 @@ fn require_frame(data: &[Vec<f64>], lowerbound: f64, upperbound: f64) -> bool {
     let rows = data.len();
     let cols = data[0].len();
 
-    for j in 0..rows {
-        if data[j][0] < lowerbound
-            || data[j][0] > upperbound
-            || data[j][cols - 1] < lowerbound
-            || data[j][cols - 1] > upperbound
+    for row in data.iter() {
+        if row[0] < lowerbound
+            || row[0] > upperbound
+            || row[cols - 1] < lowerbound
+            || row[cols - 1] > upperbound
         {
             frame_required = false;
             break;
@@ -245,22 +245,20 @@ pub(crate) fn trace_band_paths(
                                         y += add_y[dir];
 
                                         /* change direction if we moved out of grid again */
-                                        if usize::try_from(x).is_err()
+                                        if (usize::try_from(x).is_err()
                                             || usize::try_from(y).is_err()
                                             || cell_grid.get(x as usize).is_none()
-                                            || cell_grid[x as usize].get(y as usize).is_none()
-                                        {
-                                            if ((dir == 0) && (y < 0))
+                                            || cell_grid[x as usize].get(y as usize).is_none())
+                                            && (((dir == 0) && (y < 0))
                                                 || ((dir == 1) && (x < 0))
                                                 || ((dir == 2) && (y == rows as i32))
-                                                || ((dir == 3) && (x == cols as i32))
-                                            {
-                                                x -= add_x[dir];
-                                                y -= add_y[dir];
+                                                || ((dir == 3) && (x == cols as i32)))
+                                        {
+                                            x -= add_x[dir];
+                                            y -= add_y[dir];
 
-                                                dir = (dir + 1) % 4;
-                                                count += 1;
-                                            }
+                                            dir = (dir + 1) % 4;
+                                            count += 1;
                                         }
 
                                         if x == i as i32

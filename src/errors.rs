@@ -37,6 +37,7 @@ pub enum ErrorKind {
     UnexpectedCVAL,
     UnexpectedOutOfGridMove,
     OutOfBounds,
+    BadIntervals,
 }
 
 impl From<serde_json::error::Error> for Error {
@@ -67,6 +68,7 @@ impl fmt::Display for Error {
             ErrorKind::UnknownEnterType => write!(f, "Unknown enter type"),
             ErrorKind::OutOfBounds => write!(f, "Out of bounds"),
             ErrorKind::UnexpectedOutOfGridMove => write!(f, "Unexpected out of grid move"),
+            ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lowerbound and the upperbound of the band to compute)")
         }
     }
 }

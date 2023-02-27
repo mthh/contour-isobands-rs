@@ -1,8 +1,7 @@
-use crate::errors::{new_error, Error, ErrorKind, Result};
+use crate::errors::{ErrorKind, new_error, Result};
 use crate::polygons::trace_band_paths;
 use crate::shape_coordinates::prepare_cell;
 use geo_types::{Coord, MultiPolygon, Point, Polygon};
-// use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pt(pub f64, pub f64);
@@ -10,6 +9,50 @@ pub struct Pt(pub f64, pub f64);
 impl From<Pt> for Coord<f64> {
     fn from(pt: Pt) -> Self {
         Coord { x: pt.0, y: pt.1 }
+    }
+}
+
+/// An isoband, described by its min and max value and MultiPolygon.
+#[derive(Debug)]
+pub struct Band {
+    pub min_v: f64,
+    pub max_v: f64,
+    pub polygons: MultiPolygon<f64>,
+}
+
+impl Band {
+    pub fn geometry(&self) -> &MultiPolygon<f64> {
+        &self.polygons
+    }
+
+    pub fn into_inner(self) -> (MultiPolygon<f64>, f64, f64) {
+        (self.polygons, self.min_v, self.max_v)
+    }
+
+    pub fn min_v(&self) -> f64 {
+        self.min_v
+    }
+
+    pub fn max_v(&self) -> f64 {
+        self.max_v
+    }
+
+    #[cfg(feature = "geojson")]
+    /// Convert the isoband to a GeoJSON Feature
+    ///
+    /// To get a string representation, call to_geojson().to_string().
+    pub fn to_geojson(&self) -> geojson::Feature {
+        let mut properties = geojson::JsonObject::with_capacity(2);
+        properties.insert("min_v".to_string(), self.min_v.into());
+        properties.insert("max_v".to_string(), self.max_v.into());
+
+        geojson::Feature {
+            bbox: None,
+            geometry: Some(geojson::Geometry::from(self.geometry())),
+            id: None,
+            properties: Some(properties),
+            foreign_members: None,
+        }
     }
 }
 
@@ -37,24 +80,6 @@ pub(crate) enum EnterType {
     RT,
     TR,
 }
-
-// impl FromStr for EnterType {
-//     type Err = Error;
-//
-//     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-//         match s {
-//             "TL" => Ok(EnterType::TL),
-//             "LT" => Ok(EnterType::LT),
-//             "LB" => Ok(EnterType::LB),
-//             "BL" => Ok(EnterType::BL),
-//             "BR" => Ok(EnterType::BR),
-//             "RB" => Ok(EnterType::RB),
-//             "RT" => Ok(EnterType::RT),
-//             "TR" => Ok(EnterType::TR),
-//             _ => Err(new_error(ErrorKind::UnknownEnterType)),
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 pub(crate) struct MoveInfo {
@@ -115,20 +140,66 @@ pub(crate) struct Settings {
     pub max_v: f64,
 }
 
-pub fn isobands(data: &[Vec<f64>], min_v: &[f64], bandwidth: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
-    if min_v.len() != bandwidth.len() {
-        panic!("min_v and bandwidth must have the same length");
+pub fn isobands(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Band>> {
+    if intervals.len() < 2 {
+        return Err(new_error(ErrorKind::BadIntervals));
     }
     let lj = data.len();
     let li = data[0].len();
 
-    let res = min_v
+    let res = intervals
         .iter()
-        .zip(bandwidth.iter())
-        .map(|(min, bw)| -> Result<Vec<Vec<Pt>>> {
+        .zip(intervals.iter().skip(1))
+        .map(|(min, max)| -> Result<Band> {
             let opt = Settings {
                 min_v: *min,
-                max_v: *min + *bw,
+                max_v: *max,
+            };
+            let mut cell_grid = Vec::with_capacity(li);
+            for i in 0..li - 1 {
+                cell_grid.push(Vec::with_capacity(lj));
+                for j in 0..lj - 1 {
+                    cell_grid[i].push(prepare_cell(i, j, data, &opt)?);
+                }
+            }
+            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+
+            let polygons: MultiPolygon<f64> = band_polygons
+                .iter()
+                .map(|poly| {
+                    let points: Vec<Point<f64>> = poly
+                        .iter()
+                        .map(|pt| Point::new(pt.0, pt.1))
+                        .collect::<Vec<Point<f64>>>();
+                    Polygon::new(points.into(), vec![])
+                })
+                .collect::<Vec<Polygon<f64>>>()
+                .into();
+            Ok(Band {
+                polygons,
+                min_v: opt.min_v,
+                max_v: opt.max_v,
+            })
+        })
+        .collect::<Result<Vec<Band>>>()?;
+
+    Ok(res)
+}
+
+pub fn isobands_test(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
+    if intervals.len() < 2 {
+        return Err(new_error(ErrorKind::BadIntervals));
+    }
+    let lj = data.len();
+    let li = data[0].len();
+
+    let res = intervals
+          .iter()
+          .zip(intervals.iter().skip(1))
+          .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
+            let opt = Settings {
+                min_v: *min,
+                max_v: *max,
             };
             let mut cell_grid = Vec::with_capacity(li);
             for i in 0..li - 1 {

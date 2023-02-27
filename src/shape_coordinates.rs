@@ -1812,8 +1812,9 @@ pub(crate) fn prepare_cell(
     Ok(Some(cell))
 }
 
+#[cfg(test)]
 mod test {
-    use super::*;
+    use crate::shape_coordinates::compute_center_average;
 
     #[test]
     fn test_compute_center_average() {
