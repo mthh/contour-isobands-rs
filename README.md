@@ -5,12 +5,14 @@
 
 This library is WIP, but it should be published on crates.io soon.
 
-[x] All the isobands code is ported
-[x] Tests are passing
-[ ] Return contours using geo_types primitives and propose GeoJSON serialisation
-[ ] API is polished enough (and close to contour-rs API)
-[ ] Rename contour-rs to contour-isolines-rs to clearly distinguish it from this library (contour-isobands-rs)
-[ ] Publish on crates.io
+[x] All the isobands code is ported  
+[x] Tests are passing  
+[ ] Return contours using geo_types primitives and propose GeoJSON serialisation  
+[ ] API is polished enough (and close to contour-rs API)  
+[ ] Rename contour-rs to contour-isolines-rs to distinguish it from this library (contour-isobands-rs)  
+[ ] Publish on crates.io  
+[ ] Use a spatial index to filter calls to `prepare_cell`  
+[ ] Make a WASM example
 
 ### Licence
 
