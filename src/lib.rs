@@ -7,9 +7,10 @@
 mod errors;
 mod isobands;
 mod polygons;
+mod quadtree;
 mod shape_coordinates;
 
-pub use crate::isobands::{isobands, isobands_test, Band};
+pub use crate::isobands::{isobands, isobands_test, isobands_test_quadtree, Band};
 
 #[cfg(test)]
 mod tests {
@@ -242,7 +243,8 @@ mod tests {
         let lower_band = 5.;
         let bandwidth = 2.;
 
-        let res = isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res =
+            isobands_test_quadtree(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![

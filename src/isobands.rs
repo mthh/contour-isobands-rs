@@ -1,5 +1,6 @@
-use crate::errors::{ErrorKind, new_error, Result};
+use crate::errors::{new_error, ErrorKind, Result};
 use crate::polygons::trace_band_paths;
+use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
 use geo_types::{Coord, MultiPolygon, Point, Polygon};
 
@@ -194,13 +195,14 @@ pub fn isobands_test(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec
     let li = data[0].len();
 
     let res = intervals
-          .iter()
-          .zip(intervals.iter().skip(1))
-          .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
+        .iter()
+        .zip(intervals.iter().skip(1))
+        .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
             let opt = Settings {
                 min_v: *min,
                 max_v: *max,
             };
+
             let mut cell_grid = Vec::with_capacity(li);
             for i in 0..li - 1 {
                 cell_grid.push(Vec::with_capacity(lj));
@@ -209,6 +211,45 @@ pub fn isobands_test(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec
                 }
             }
             // println!("cell_grid: {:?}", cell_grid);
+            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+            Ok(band_polygons)
+        })
+        .collect::<Result<Vec<Vec<Vec<Pt>>>>>()?;
+
+    Ok(res)
+}
+
+pub fn isobands_test_quadtree(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
+    if intervals.len() < 2 {
+        return Err(new_error(ErrorKind::BadIntervals));
+    }
+    let lj = data.len();
+    let li = data[0].len();
+
+    let tree = QuadTree::new(data);
+    let res = intervals
+        .iter()
+        .zip(intervals.iter().skip(1))
+        .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
+            let opt = Settings {
+                min_v: *min,
+                max_v: *max,
+            };
+
+            let mut cell_grid = Vec::with_capacity(li);
+            for i in 0..li - 1 {
+                cell_grid.push(Vec::with_capacity(lj));
+                for _j in 0..lj - 1 {
+                    cell_grid[i].push(None);
+                }
+            }
+
+            for cell in tree.cells_in_band(opt.min_v, opt.max_v) {
+                let i = cell.0;
+                let j = cell.1;
+                cell_grid[i][j] = prepare_cell(i, j, data, &opt)?;
+            }
+
             let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
             Ok(band_polygons)
         })
