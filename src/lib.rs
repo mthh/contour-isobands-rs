@@ -10,12 +10,40 @@ mod polygons;
 mod quadtree;
 mod shape_coordinates;
 
-pub use crate::isobands::{isobands, isobands_test, isobands_test_quadtree, Band};
+pub use crate::isobands::{
+    isobands, Band, ContourBuilder, _isobands_test, _isobands_test_quadtree,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::isobands::Pt;
+
+    #[test]
+    fn isobands_err_matrix_empty() {
+        let matrix: Vec<Vec<f64>> = vec![vec![]];
+        let lower_band = 1.;
+        let bandwidth = 2.;
+
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn isobands_err_threshold_too_short() {
+        let matrix = vec![vec![1., 1.], vec![1., 5.]];
+
+        let res = _isobands_test(&matrix, &vec![2.]);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn isobands_err_matrix_rows_not_same_length() {
+        let matrix: Vec<Vec<f64>> = vec![vec![1., 1.], vec![1., 5., 5.]];
+
+        let res = _isobands_test(&matrix, &vec![1., 3.]);
+        assert!(res.is_err());
+    }
 
     #[test]
     fn isobands_minimal() {
@@ -24,7 +52,7 @@ mod tests {
         let lower_band = 1.;
         let bandwidth = 2.;
 
-        let res = isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![vec![
@@ -48,7 +76,7 @@ mod tests {
         let lower_band = 1.;
         let bandwidth = 1.;
 
-        let res = isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![
@@ -95,7 +123,7 @@ mod tests {
         let lower_band = 4.5;
         let bandwidth = 4.5;
 
-        let res = isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![
@@ -187,7 +215,7 @@ mod tests {
         let lower_band = 3.;
         let bandwidth = 2.;
 
-        let res = isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![
@@ -243,8 +271,7 @@ mod tests {
         let lower_band = 5.;
         let bandwidth = 2.;
 
-        let res =
-            isobands_test_quadtree(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
         assert_eq!(
             res,
             vec![vec![
@@ -299,7 +326,7 @@ mod tests {
 
         let intervals = vec![3., 5., 7.];
 
-        let res = isobands_test(&matrix, &intervals).unwrap();
+        let res = _isobands_test(&matrix, &intervals).unwrap();
         assert_eq!(
             res,
             vec![

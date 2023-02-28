@@ -141,16 +141,124 @@ pub(crate) struct Settings {
     pub max_v: f64,
 }
 
-pub fn isobands(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Band>> {
-    if intervals.len() < 2 {
+pub struct ContourBuilder {
+    /// The horizontal coordinate for the origin of the grid.
+    x_origin: f64,
+    /// The vertical coordinate for the origin of the grid.
+    y_origin: f64,
+    /// The horizontal step for the grid
+    x_step: f64,
+    /// The vertical step for the grid
+    y_step: f64,
+    /// Whether to use a quadtree
+    use_quad_tree: bool,
+}
+
+impl Default for ContourBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ContourBuilder {
+    /// Constructs a new contours generator.
+    ///
+    /// By default, `x_origin` and `y_origin` are set to `0.0`, `x_step` and `y_step` to `1.0`
+    /// and `use_quad_tree` to `false`.
+    pub fn new() -> Self {
+        ContourBuilder {
+            x_origin: 0f64,
+            y_origin: 0f64,
+            x_step: 1f64,
+            y_step: 1f64,
+            use_quad_tree: false,
+        }
+    }
+
+    /// Sets the x origin of the grid.
+    pub fn x_origin(mut self, x_origin: impl Into<f64>) -> Self {
+        self.x_origin = x_origin.into();
+        self
+    }
+
+    /// Sets the y origin of the grid.
+    pub fn y_origin(mut self, y_origin: impl Into<f64>) -> Self {
+        self.y_origin = y_origin.into();
+        self
+    }
+
+    /// Sets the x step of the grid.
+    pub fn x_step(mut self, x_step: impl Into<f64>) -> Self {
+        self.x_step = x_step.into();
+        self
+    }
+
+    /// Sets the y step of the grid.
+    pub fn y_step(mut self, y_step: impl Into<f64>) -> Self {
+        self.y_step = y_step.into();
+        self
+    }
+
+    /// Sets whether to use a quadtree.
+    pub fn use_quad_tree(mut self, use_quad_tree: bool) -> Self {
+        self.use_quad_tree = use_quad_tree;
+        self
+    }
+
+    // pub fn contours(&self, data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Band>> {
+    //     let bands = isobands(data, thresholds, self.use_quad_tree)?;
+    //     // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+    //     if (self.x_origin, self.y_origin) != (0f64, 0f64)
+    //         || (self.x_step, self.y_step) != (1f64, 1f64)
+    //     {
+    //         Ok(bands
+    //             .into_iter()
+    //             .map(|band| {
+    //                 let mut band = band;
+    //                 band.polygons.map_coords_inplace(&|&(x, y)| {
+    //                     (
+    //                         self.x_origin + x as f64 * self.x_step,
+    //                         self.y_origin + y as f64 * self.y_step,
+    //                     )
+    //                 });
+    //                 band
+    //             })
+    //             .collect()
+    //     } else {
+    //         Ok(bands)
+    //     }
+    // }
+}
+
+pub fn isobands(data: &[Vec<f64>], thresholds: &[f64], use_quad_tree: bool) -> Result<Vec<Band>> {
+    if data.is_empty() {
+        return Err(new_error(ErrorKind::BadData));
+    }
+    data.iter()
+        .map(|row| {
+            if row.len() != data[0].len() {
+                Err(new_error(ErrorKind::BadRowLength))?
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<()>>>()?;
+    if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
+    if use_quad_tree {
+        _isobands_quad_tree(data, thresholds)
+    } else {
+        _isobands(data, thresholds)
+    }
+}
+
+fn _isobands(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Band>> {
     let lj = data.len();
     let li = data[0].len();
 
-    let res = intervals
+    thresholds
         .iter()
-        .zip(intervals.iter().skip(1))
+        .zip(thresholds.iter().skip(1))
         .map(|(min, max)| -> Result<Band> {
             let opt = Settings {
                 min_v: *min,
@@ -182,21 +290,80 @@ pub fn isobands(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Band>> {
                 max_v: opt.max_v,
             })
         })
-        .collect::<Result<Vec<Band>>>()?;
-
-    Ok(res)
+        .collect::<Result<Vec<Band>>>()
 }
 
-pub fn isobands_test(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
-    if intervals.len() < 2 {
+fn _isobands_quad_tree(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Band>> {
+    let lj = data.len();
+    let li = data[0].len();
+
+    let tree = QuadTree::new(data);
+    thresholds
+        .iter()
+        .zip(thresholds.iter().skip(1))
+        .map(|(min, max)| -> Result<Band> {
+            let opt = Settings {
+                min_v: *min,
+                max_v: *max,
+            };
+
+            let mut cell_grid = Vec::with_capacity(li);
+            for i in 0..li - 1 {
+                cell_grid.push(Vec::with_capacity(lj));
+                for _j in 0..lj - 1 {
+                    cell_grid[i].push(None);
+                }
+            }
+
+            for cell in tree.cells_in_band(opt.min_v, opt.max_v) {
+                let i = cell.0;
+                let j = cell.1;
+                cell_grid[i][j] = prepare_cell(i, j, data, &opt)?;
+            }
+
+            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+            let polygons: MultiPolygon<f64> = band_polygons
+                .iter()
+                .map(|poly| {
+                    let points: Vec<Point<f64>> = poly
+                        .iter()
+                        .map(|pt| Point::new(pt.0, pt.1))
+                        .collect::<Vec<Point<f64>>>();
+                    Polygon::new(points.into(), vec![])
+                })
+                .collect::<Vec<Polygon<f64>>>()
+                .into();
+            Ok(Band {
+                polygons,
+                min_v: opt.min_v,
+                max_v: opt.max_v,
+            })
+        })
+        .collect::<Result<Vec<Band>>>()
+}
+
+pub fn _isobands_test(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
+    if data.is_empty() {
+        return Err(new_error(ErrorKind::BadData));
+    }
+    if data
+        .iter()
+        .map(|row| row.len())
+        .collect::<Vec<usize>>()
+        .iter()
+        .any(|&x| x != data[0].len() || x < 1)
+    {
+        return Err(new_error(ErrorKind::BadRowLength));
+    }
+    if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
     let lj = data.len();
     let li = data[0].len();
 
-    let res = intervals
+    let res = thresholds
         .iter()
-        .zip(intervals.iter().skip(1))
+        .zip(thresholds.iter().skip(1))
         .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
             let opt = Settings {
                 min_v: *min,
@@ -219,17 +386,28 @@ pub fn isobands_test(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec
     Ok(res)
 }
 
-pub fn isobands_test_quadtree(data: &[Vec<f64>], intervals: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
-    if intervals.len() < 2 {
+pub fn _isobands_test_quadtree(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Vec<Vec<Pt>>>> {
+    if data.is_empty() {
+        return Err(new_error(ErrorKind::BadData));
+    }
+    data.iter()
+        .map(|row| {
+            if row.len() != data[0].len() {
+                Err(new_error(ErrorKind::BadRowLength))?
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<()>>>()?;
+    if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
     let lj = data.len();
     let li = data[0].len();
 
     let tree = QuadTree::new(data);
-    let res = intervals
+    let res = thresholds
         .iter()
-        .zip(intervals.iter().skip(1))
+        .zip(thresholds.iter().skip(1))
         .map(|(min, max)| -> Result<Vec<Vec<Pt>>> {
             let opt = Settings {
                 min_v: *min,

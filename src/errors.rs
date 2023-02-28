@@ -38,6 +38,8 @@ pub enum ErrorKind {
     UnexpectedOutOfGridMove,
     OutOfBounds,
     BadIntervals,
+    BadRowLength,
+    BadData,
 }
 
 impl From<serde_json::error::Error> for Error {
@@ -68,7 +70,9 @@ impl fmt::Display for Error {
             ErrorKind::UnknownEnterType => write!(f, "Unknown enter type"),
             ErrorKind::OutOfBounds => write!(f, "Out of bounds"),
             ErrorKind::UnexpectedOutOfGridMove => write!(f, "Unexpected out of grid move"),
-            ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lowerbound and the upperbound of the band to compute)")
+            ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lowerbound and the upperbound of the band to compute)"),
+            ErrorKind::BadRowLength => write!(f, "All rows must have the same length"),
+            ErrorKind::BadData => write!(f, "Data must have at least one row"),
         }
     }
 }

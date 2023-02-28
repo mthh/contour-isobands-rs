@@ -11,14 +11,13 @@ This library is WIP, but it should be published on crates.io soon.
 
 Current status / roadmap is as follows:
 
-[x] All the isobands code is ported from [RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js)  
-[x] Tests are passing  
-[ ] Return contours using geo_types primitives and propose GeoJSON serialisation (WIP)  
-[ ] API is polished enough (and close to contour-rs API)  
-[ ] Rename contour-rs to contour-isolines-rs to distinguish it from this library (*contour-isobands-rs*)  
-[ ] Publish on crates.io  
-[x] Use a spatial index to filter calls to `prepare_cell` (although it doesn't seem to yield performance improvements for now)  
-[ ] Make a WASM example (WIP - see https://github.com/mthh/contour-isobands-wasm)
+- [x] All the isobands code (from [RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js)) is ported and tests are passing
+- [x] Return contours using geo_types primitives and propose GeoJSON serialisation (WIP)
+- [ ] API is polished enough (and close to contour-rs API)
+- [ ] Rename contour-rs to contour-isolines-rs to distinguish it from this library (*contour-isobands-rs*)
+- [ ] Publish on crates.io
+- [x] Implement a spatial index to filter calls to `prepare_cell` (although it doesn't seem to yield performance improvements for now)
+- [ ] Make a WASM example (WIP - see https://github.com/mthh/contour-isobands-wasm)
 
 ### Licence
 
