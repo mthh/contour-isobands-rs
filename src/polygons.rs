@@ -219,7 +219,7 @@ pub(crate) fn trace_band_paths(
                                         && usize::try_from(y).is_ok()
                                         && cell_grid.get(x as usize).is_some()
                                         && cell_grid[x as usize].get(y as usize).is_some()
-                                        // && cell_grid[x as usize][y as usize].is_some()
+                                    // && cell_grid[x as usize][y as usize].is_some()
                                     {
                                         cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
 

@@ -3,16 +3,14 @@
 //! marching squares to a matrix of values.
 //!
 //! Output is a list of isobands, each isoband is a list of polygons.
-
+mod area;
 mod errors;
 mod isobands;
 mod polygons;
 mod quadtree;
 mod shape_coordinates;
 
-pub use crate::isobands::{
-    isobands, Band, ContourBuilder, _isobands_test, _isobands_test_quadtree,
-};
+pub use crate::isobands::{isobands, Band, ContourBuilder};
 
 #[cfg(test)]
 mod tests {
@@ -25,7 +23,7 @@ mod tests {
         let lower_band = 1.;
         let bandwidth = 2.;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]);
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false);
         assert!(res.is_err());
     }
 
@@ -33,7 +31,7 @@ mod tests {
     fn isobands_err_threshold_too_short() {
         let matrix = vec![vec![1., 1.], vec![1., 5.]];
 
-        let res = _isobands_test(&matrix, &vec![2.]);
+        let res = isobands(&matrix, &vec![2.], false);
         assert!(res.is_err());
     }
 
@@ -41,7 +39,7 @@ mod tests {
     fn isobands_err_matrix_rows_not_same_length() {
         let matrix: Vec<Vec<f64>> = vec![vec![1., 1.], vec![1., 5., 5.]];
 
-        let res = _isobands_test(&matrix, &vec![1., 3.]);
+        let res = isobands(&matrix, &vec![1., 3.], false);
         assert!(res.is_err());
     }
 
@@ -52,18 +50,20 @@ mod tests {
         let lower_band = 1.;
         let bandwidth = 2.;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
         assert_eq!(
-            res,
-            vec![vec![vec![
+            res[0].0,
+            vec![vec![
                 Pt(0.5, 1.),
                 Pt(1., 0.5),
                 Pt(1., 0.),
                 Pt(0., 0.),
                 Pt(0., 1.),
                 Pt(0.5, 1.),
-            ]]]
+            ]]
         );
+        assert_eq!(res[0].1, lower_band);
+        assert_eq!(res[0].2, lower_band + bandwidth);
     }
 
     #[test]
@@ -76,10 +76,10 @@ mod tests {
         let lower_band = 1.;
         let bandwidth = 1.;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
         assert_eq!(
-            res,
-            vec![vec![
+            res[0].0,
+            vec![
                 vec![
                     Pt(0.25, 1.),
                     Pt(1., 0.25),
@@ -103,7 +103,7 @@ mod tests {
                     Pt(0., 0.),
                     Pt(0., 1.),
                 ]
-            ]]
+            ]
         );
     }
 
@@ -123,10 +123,10 @@ mod tests {
         let lower_band = 4.5;
         let bandwidth = 4.5;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
         assert_eq!(
-            res,
-            vec![vec![
+            res[0].0,
+            vec![
                 vec![
                     Pt(1., 0.8),
                     Pt(0.8, 1.),
@@ -197,7 +197,7 @@ mod tests {
                     Pt(3.6818181818181817, 3.),
                     Pt(3., 2.3181818181818183),
                 ],
-            ]]
+            ]
         );
     }
 
@@ -215,10 +215,10 @@ mod tests {
         let lower_band = 3.;
         let bandwidth = 2.;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
         assert_eq!(
-            res,
-            vec![vec![
+            res[0].0,
+            vec![
                 vec![
                     Pt(1.0, 0.5),
                     Pt(0.5, 1.0),
@@ -253,7 +253,7 @@ mod tests {
                     Pt(1.0, 3.0),
                     Pt(1.0, 2.0)
                 ]
-            ]]
+            ]
         );
     }
 
@@ -271,10 +271,10 @@ mod tests {
         let lower_band = 5.;
         let bandwidth = 2.;
 
-        let res = _isobands_test(&matrix, &vec![lower_band, lower_band + bandwidth]).unwrap();
+        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
         assert_eq!(
-            res,
-            vec![vec![
+            res[0].0,
+            vec![
                 vec![
                     Pt(1.0, 1.0),
                     Pt(1.0, 1.0),
@@ -309,7 +309,7 @@ mod tests {
                     Pt(1.4, 3.0),
                     Pt(1.2, 2.0)
                 ]
-            ]]
+            ]
         );
     }
 
@@ -326,83 +326,92 @@ mod tests {
 
         let intervals = vec![3., 5., 7.];
 
-        let res = _isobands_test(&matrix, &intervals).unwrap();
+        let res = isobands(&matrix, &intervals, false).unwrap();
+
+        assert_eq!(res.len(), 2);
+
         assert_eq!(
-            res,
+            res[0].0,
             vec![
                 vec![
-                    vec![
-                        Pt(1.0, 0.5),
-                        Pt(0.5, 1.0),
-                        Pt(0.5, 2.0),
-                        Pt(0.5, 3.0),
-                        Pt(0.5, 4.0),
-                        Pt(1.0, 4.5),
-                        Pt(2.0, 4.5),
-                        Pt(3.0, 4.5),
-                        Pt(4.0, 4.5),
-                        Pt(5.0, 4.5),
-                        Pt(5.5, 4.0),
-                        Pt(5.5, 3.0),
-                        Pt(5.5, 2.0),
-                        Pt(5.5, 1.0),
-                        Pt(5.0, 0.5),
-                        Pt(4.0, 0.5),
-                        Pt(3.0, 0.5),
-                        Pt(2.0, 0.5),
-                        Pt(1.0, 0.5)
-                    ],
-                    vec![
-                        Pt(1.0, 2.0),
-                        Pt(2.0, 1.0),
-                        Pt(3.0, 1.0),
-                        Pt(4.0, 1.0),
-                        Pt(5.0, 2.0),
-                        Pt(5.0, 3.0),
-                        Pt(4.0, 4.0),
-                        Pt(3.0, 4.0),
-                        Pt(2.0, 4.0),
-                        Pt(1.0, 3.0),
-                        Pt(1.0, 2.0)
-                    ]
+                    Pt(1.0, 0.5),
+                    Pt(0.5, 1.0),
+                    Pt(0.5, 2.0),
+                    Pt(0.5, 3.0),
+                    Pt(0.5, 4.0),
+                    Pt(1.0, 4.5),
+                    Pt(2.0, 4.5),
+                    Pt(3.0, 4.5),
+                    Pt(4.0, 4.5),
+                    Pt(5.0, 4.5),
+                    Pt(5.5, 4.0),
+                    Pt(5.5, 3.0),
+                    Pt(5.5, 2.0),
+                    Pt(5.5, 1.0),
+                    Pt(5.0, 0.5),
+                    Pt(4.0, 0.5),
+                    Pt(3.0, 0.5),
+                    Pt(2.0, 0.5),
+                    Pt(1.0, 0.5)
                 ],
                 vec![
-                    vec![
-                        Pt(1.0, 1.0),
-                        Pt(1.0, 1.0),
-                        Pt(1.0, 2.0),
-                        Pt(1.0, 3.0),
-                        Pt(1.0, 4.0),
-                        Pt(1.0, 4.0),
-                        Pt(2.0, 4.0),
-                        Pt(3.0, 4.0),
-                        Pt(4.0, 4.0),
-                        Pt(5.0, 4.0),
-                        Pt(5.0, 4.0),
-                        Pt(5.0, 3.0),
-                        Pt(5.0, 2.0),
-                        Pt(5.0, 1.0),
-                        Pt(5.0, 1.0),
-                        Pt(4.0, 1.0),
-                        Pt(3.0, 1.0),
-                        Pt(2.0, 1.0),
-                        Pt(1.0, 1.0)
-                    ],
-                    vec![
-                        Pt(1.2, 2.0),
-                        Pt(2.0, 1.2),
-                        Pt(3.0, 1.2),
-                        Pt(4.0, 1.2),
-                        Pt(4.8, 2.0),
-                        Pt(4.6, 3.0),
-                        Pt(4.0, 3.6),
-                        Pt(3.0, 3.6),
-                        Pt(2.0, 3.6),
-                        Pt(1.4, 3.0),
-                        Pt(1.2, 2.0)
-                    ]
+                    Pt(1.0, 2.0),
+                    Pt(2.0, 1.0),
+                    Pt(3.0, 1.0),
+                    Pt(4.0, 1.0),
+                    Pt(5.0, 2.0),
+                    Pt(5.0, 3.0),
+                    Pt(4.0, 4.0),
+                    Pt(3.0, 4.0),
+                    Pt(2.0, 4.0),
+                    Pt(1.0, 3.0),
+                    Pt(1.0, 2.0)
                 ]
             ]
         );
+        assert_eq!(res[0].1, 3.0);
+        assert_eq!(res[0].2, 5.0);
+
+        assert_eq!(
+            res[1].0,
+            vec![
+                vec![
+                    Pt(1.0, 1.0),
+                    Pt(1.0, 1.0),
+                    Pt(1.0, 2.0),
+                    Pt(1.0, 3.0),
+                    Pt(1.0, 4.0),
+                    Pt(1.0, 4.0),
+                    Pt(2.0, 4.0),
+                    Pt(3.0, 4.0),
+                    Pt(4.0, 4.0),
+                    Pt(5.0, 4.0),
+                    Pt(5.0, 4.0),
+                    Pt(5.0, 3.0),
+                    Pt(5.0, 2.0),
+                    Pt(5.0, 1.0),
+                    Pt(5.0, 1.0),
+                    Pt(4.0, 1.0),
+                    Pt(3.0, 1.0),
+                    Pt(2.0, 1.0),
+                    Pt(1.0, 1.0)
+                ],
+                vec![
+                    Pt(1.2, 2.0),
+                    Pt(2.0, 1.2),
+                    Pt(3.0, 1.2),
+                    Pt(4.0, 1.2),
+                    Pt(4.8, 2.0),
+                    Pt(4.6, 3.0),
+                    Pt(4.0, 3.6),
+                    Pt(3.0, 3.6),
+                    Pt(2.0, 3.6),
+                    Pt(1.4, 3.0),
+                    Pt(1.2, 2.0)
+                ]
+            ]
+        );
+        assert_eq!(res[1].1, 5.0);
+        assert_eq!(res[1].2, 7.0);
     }
 }

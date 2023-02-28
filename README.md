@@ -1,5 +1,7 @@
 # Contour-isobands-rs
 
+Compute isobands and contour polygons (using marching squares algorithm).
+
 While *contour-rs* computes isolines (cf. https://en.wikipedia.org/wiki/Marching_squares#Disambiguation_of_saddle_points) and
 their corresponding polygons (i.e. polygons that contain all points above the threshold defined for a given isoline),
 contour-isobands-rs computes isobands (cf. https://en.wikipedia.org/wiki/Marching_squares#Isobands) and their
@@ -12,11 +14,11 @@ This library is WIP, but it should be published on crates.io soon.
 Current status / roadmap is as follows:
 
 - [x] All the isobands code (from [RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js)) is ported and tests are passing
-- [x] Return contours using geo_types primitives and propose GeoJSON serialisation (WIP)
+- [x] Return contours using geo_types primitives and propose GeoJSON serialisation
 - [ ] API is polished enough (and close to contour-rs API)
 - [ ] Rename contour-rs to contour-isolines-rs to distinguish it from this library (*contour-isobands-rs*)
 - [ ] Publish on crates.io
-- [x] Implement a spatial index to filter calls to `prepare_cell` (although it doesn't seem to yield performance improvements for now)
+- [x] Implement a spatial index to filter calls to `prepare_cell` (although it only yields improved performance for large grids / when using numerous thresholds)
 - [ ] Make a WASM example (WIP - see https://github.com/mthh/contour-isobands-wasm)
 
 ### Licence
