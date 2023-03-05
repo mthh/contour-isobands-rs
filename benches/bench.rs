@@ -4,8 +4,7 @@ extern crate test;
 
 use test::{black_box, Bencher};
 
-use contour_isobands::_isobands_test;
-use contour_isobands::_isobands_test_quadtree;
+use contour_isobands::isobands;
 
 #[bench]
 fn bench_isobands_no_quadtree(b: &mut Bencher) {
@@ -6572,7 +6571,7 @@ fn bench_isobands_no_quadtree(b: &mut Bencher) {
         ],
     ];
 
-    b.iter(|| black_box(_isobands_test(&matrix, &[1.5, 3., 4.5, 8., 10., 12.]).unwrap()));
+    b.iter(|| black_box(isobands(&matrix, &[1.5, 3., 4.5, 8., 10.], false).unwrap()));
 }
 
 #[bench]
@@ -13140,5 +13139,5 @@ fn bench_isobands_quadtree(b: &mut Bencher) {
         ],
     ];
 
-    b.iter(|| black_box(_isobands_test_quadtree(&matrix, &[1.5, 3., 4.5, 8., 10., 12.]).unwrap()));
+    b.iter(|| black_box(isobands(&matrix, &[1.5, 3., 4.5, 8., 10.], true).unwrap()));
 }

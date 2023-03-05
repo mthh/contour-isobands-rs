@@ -46,7 +46,7 @@ fn compute_center_average(bl: f64, br: f64, tl: f64, tr: f64, min_v: f64, max_v:
 
 /// Below are lookup for shapes, ported from https://github.com/RaumZeit/MarchingSquares.js/blob/master/src/isobands.js
 
-pub(crate) fn square(_cell: &mut Cell, _opt: &Settings) {
+fn square(_cell: &mut Cell, _opt: &Settings) {
     // This is a no-op due to how we are tracing the polygons
     // cell.polygons.push(
     //     vec![
@@ -58,12 +58,12 @@ pub(crate) fn square(_cell: &mut Cell, _opt: &Settings) {
     // );
 }
 
-pub(crate) fn triangle_bl(cell: &mut Cell, opt: &Settings) {
+fn triangle_bl(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(bottomleft, 0.)],
+        path: [Pt(0., leftbottom), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -80,12 +80,12 @@ pub(crate) fn triangle_bl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn triangle_br(cell: &mut Cell, opt: &Settings) {
+fn triangle_br(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(1., rightbottom)],
+        path: [Pt(bottomright, 0.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -102,12 +102,12 @@ pub(crate) fn triangle_br(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn triangle_tr(cell: &mut Cell, opt: &Settings) {
+fn triangle_tr(cell: &mut Cell, opt: &Settings) {
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(topright, 1.)],
+        path: [Pt(1., righttop), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -124,12 +124,12 @@ pub(crate) fn triangle_tr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn triangle_tl(cell: &mut Cell, opt: &Settings) {
+fn triangle_tl(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(0., lefttop)],
+        path: [Pt(topleft, 1.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -146,12 +146,12 @@ pub(crate) fn triangle_tl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_t(cell: &mut Cell, opt: &Settings) {
+fn tetragon_t(cell: &mut Cell, opt: &Settings) {
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(0., lefttop)],
+        path: [Pt(1., righttop), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -169,12 +169,12 @@ pub(crate) fn tetragon_t(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_r(cell: &mut Cell, opt: &Settings) {
+fn tetragon_r(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(topright, 1.)],
+        path: [Pt(bottomright, 0.), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -192,12 +192,12 @@ pub(crate) fn tetragon_r(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_b(cell: &mut Cell, opt: &Settings) {
+fn tetragon_b(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(1., rightbottom)],
+        path: [Pt(0., leftbottom), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -215,12 +215,12 @@ pub(crate) fn tetragon_b(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_l(cell: &mut Cell, opt: &Settings) {
+fn tetragon_l(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(bottomleft, 0.)],
+        path: [Pt(topleft, 1.), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -238,14 +238,14 @@ pub(crate) fn tetragon_l(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
+fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomleft, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -254,7 +254,7 @@ pub(crate) fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(bottomright, 0.)],
+        path: [Pt(0., lefttop), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -272,14 +272,14 @@ pub(crate) fn tetragon_bl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_br(cell: &mut Cell, opt: &Settings) {
+fn tetragon_br(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(1., righttop)],
+        path: [Pt(bottomleft, 0.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -288,7 +288,7 @@ pub(crate) fn tetragon_br(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomright, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -306,14 +306,14 @@ pub(crate) fn tetragon_br(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_tr(cell: &mut Cell, opt: &Settings) {
+fn tetragon_tr(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(topleft, 1.)],
+        path: [Pt(1., rightbottom), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -322,7 +322,7 @@ pub(crate) fn tetragon_tr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., righttop)],
+        path: [Pt(topright, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -340,14 +340,14 @@ pub(crate) fn tetragon_tr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_tl(cell: &mut Cell, opt: &Settings) {
+fn tetragon_tl(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(0., leftbottom)],
+        path: [Pt(topright, 1.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -356,7 +356,7 @@ pub(crate) fn tetragon_tl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topleft, 1.)],
+        path: [Pt(0., lefttop), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -374,14 +374,14 @@ pub(crate) fn tetragon_tl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_lr(cell: &mut Cell, opt: &Settings) {
+fn tetragon_lr(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(1., righttop)],
+        path: [Pt(0., lefttop), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -390,7 +390,7 @@ pub(crate) fn tetragon_lr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(0., leftbottom)],
+        path: [Pt(1., rightbottom), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -408,14 +408,14 @@ pub(crate) fn tetragon_lr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn tetragon_tb(cell: &mut Cell, opt: &Settings) {
+fn tetragon_tb(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(bottomright, 1.)],
+        path: [Pt(topright, 1.), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -424,7 +424,7 @@ pub(crate) fn tetragon_tb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(topleft, 1.)],
+        path: [Pt(bottomleft, 0.), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -442,12 +442,12 @@ pub(crate) fn tetragon_tb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_tr(cell: &mut Cell, opt: &Settings) {
+fn pentagon_tr(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(1., rightbottom)],
+        path: [Pt(topleft, 1.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -466,12 +466,12 @@ pub(crate) fn pentagon_tr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_tl(cell: &mut Cell, opt: &Settings) {
+fn pentagon_tl(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(topright, 1.)],
+        path: [Pt(0., leftbottom), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -490,12 +490,12 @@ pub(crate) fn pentagon_tl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_br(cell: &mut Cell, opt: &Settings) {
+fn pentagon_br(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(bottomleft, 0.)],
+        path: [Pt(1., righttop), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -514,12 +514,12 @@ pub(crate) fn pentagon_br(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_bl(cell: &mut Cell, opt: &Settings) {
+fn pentagon_bl(cell: &mut Cell, opt: &Settings) {
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(0., lefttop)],
+        path: [Pt(bottomright, 0.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -538,14 +538,14 @@ pub(crate) fn pentagon_bl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_tr_rl(cell: &mut Cell, opt: &Settings) {
+fn pentagon_tr_rl(cell: &mut Cell, opt: &Settings) {
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(1., righttop)],
+        path: [Pt(topleft, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -554,7 +554,7 @@ pub(crate) fn pentagon_tr_rl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(0., lefttop)],
+        path: [Pt(1., rightbottom), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -573,14 +573,14 @@ pub(crate) fn pentagon_tr_rl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_rb_bt(cell: &mut Cell, opt: &Settings) {
+fn pentagon_rb_bt(cell: &mut Cell, opt: &Settings) {
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(bottomright, 0.)],
+        path: [Pt(1., righttop), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -589,7 +589,7 @@ pub(crate) fn pentagon_rb_bt(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(topright, 1.)],
+        path: [Pt(bottomleft, 0.), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -608,14 +608,14 @@ pub(crate) fn pentagon_rb_bt(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_bl_lr(cell: &mut Cell, opt: &Settings) {
+fn pentagon_bl_lr(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomright, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -624,7 +624,7 @@ pub(crate) fn pentagon_bl_lr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(1., rightbottom)],
+        path: [Pt(0., lefttop), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -643,14 +643,14 @@ pub(crate) fn pentagon_bl_lr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_lt_tb(cell: &mut Cell, opt: &Settings) {
+fn pentagon_lt_tb(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(topleft, 1.)],
+        path: [Pt(0., leftbottom), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -659,7 +659,7 @@ pub(crate) fn pentagon_lt_tb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(bottomleft, 0.)],
+        path: [Pt(topright, 1.), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -678,14 +678,14 @@ pub(crate) fn pentagon_lt_tb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_bl_tb(cell: &mut Cell, opt: &Settings) {
+fn pentagon_bl_tb(cell: &mut Cell, opt: &Settings) {
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., lefttop)],
+        path: [Pt(bottomleft, 0.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -694,7 +694,7 @@ pub(crate) fn pentagon_bl_tb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(bottomright, 0.)],
+        path: [Pt(topleft, 1.), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -713,14 +713,14 @@ pub(crate) fn pentagon_bl_tb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_lt_rl(cell: &mut Cell, opt: &Settings) {
+fn pentagon_lt_rl(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_ab(cell.x1, cell.x3, opt.min_v, opt.max_v);
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topright, 1.)],
+        path: [Pt(0., lefttop), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -729,7 +729,7 @@ pub(crate) fn pentagon_lt_rl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(0., leftbottom)],
+        path: [Pt(1., righttop), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -748,14 +748,14 @@ pub(crate) fn pentagon_lt_rl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_tr_bt(cell: &mut Cell, opt: &Settings) {
+fn pentagon_tr_bt(cell: &mut Cell, opt: &Settings) {
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(topleft, 1.)],
+        path: [Pt(bottomright, 0.), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -764,7 +764,7 @@ pub(crate) fn pentagon_tr_bt(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., rightbottom)],
+        path: [Pt(topright, 1.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -783,14 +783,14 @@ pub(crate) fn pentagon_tr_bt(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn pentagon_rb_lr(cell: &mut Cell, opt: &Settings) {
+fn pentagon_rb_lr(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(1., righttop)],
+        path: [Pt(0., leftbottom), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -799,7 +799,7 @@ pub(crate) fn pentagon_rb_lr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomleft, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -818,23 +818,23 @@ pub(crate) fn pentagon_rb_lr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_lt_tr(cell: &mut Cell, opt: &Settings) {
+fn hexagon_lt_tr(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let topright = interpolate_linear_b(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(topleft, 1.)],
+        path: [Pt(0., leftbottom), Pt(topleft, 1.)],
         move_info: MoveInfo {
-            x: 1,
-            y: 0,
+            x: 0,
+            y: 1,
             enter: EnterType::BL,
         },
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., rightbottom)],
+        path: [Pt(topright, 1.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -854,14 +854,14 @@ pub(crate) fn hexagon_lt_tr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_bl_lt(cell: &mut Cell, opt: &Settings) {
+fn hexagon_bl_lt(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomright, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -870,7 +870,7 @@ pub(crate) fn hexagon_bl_lt(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topright, 1.)],
+        path: [Pt(0., lefttop), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -890,14 +890,14 @@ pub(crate) fn hexagon_bl_lt(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_bl_rb(cell: &mut Cell, opt: &Settings) {
+fn hexagon_bl_rb(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., lefttop)],
+        path: [Pt(bottomleft, 0.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -906,7 +906,7 @@ pub(crate) fn hexagon_bl_rb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(bottomright, 0.)],
+        path: [Pt(1., righttop), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -926,14 +926,14 @@ pub(crate) fn hexagon_bl_rb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_tr_rb(cell: &mut Cell, opt: &Settings) {
+fn hexagon_tr_rb(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_b(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(1., righttop)],
+        path: [Pt(topleft, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -942,7 +942,7 @@ pub(crate) fn hexagon_tr_rb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomleft, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -962,14 +962,14 @@ pub(crate) fn hexagon_tr_rb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_lt_rb(cell: &mut Cell, opt: &Settings) {
+fn hexagon_lt_rb(cell: &mut Cell, opt: &Settings) {
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topright = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(topright, 1.)],
+        path: [Pt(0., leftbottom), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -978,7 +978,7 @@ pub(crate) fn hexagon_lt_rb(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(bottomleft, 0.)],
+        path: [Pt(1., righttop), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -998,14 +998,14 @@ pub(crate) fn hexagon_lt_rb(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn hexagon_bl_tr(cell: &mut Cell, opt: &Settings) {
+fn hexagon_bl_tr(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_ab(cell.x3, cell.x2, opt.min_v, opt.max_v);
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(0., lefttop)],
+        path: [Pt(bottomright, 0.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -1014,7 +1014,7 @@ pub(crate) fn hexagon_bl_tr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(1., rightbottom)],
+        path: [Pt(topleft, 1.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -1034,7 +1034,7 @@ pub(crate) fn hexagon_bl_tr(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
+fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
@@ -1043,7 +1043,7 @@ pub(crate) fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
     let righttop = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomleft, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -1052,7 +1052,7 @@ pub(crate) fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topright, 1.)],
+        path: [Pt(0., lefttop), Pt(topright, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -1061,7 +1061,7 @@ pub(crate) fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rt = Some(Corner {
-        path: vec![Pt(1., righttop), Pt(bottomright, 0.)],
+        path: [Pt(1., righttop), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -1070,7 +1070,7 @@ pub(crate) fn heptagon_tr(cell: &mut Cell, opt: &Settings) {
     });
 }
 
-pub(crate) fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
+fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let topleft = interpolate_linear_a(cell.x3, cell.x2, opt.min_v, opt.max_v);
@@ -1079,7 +1079,7 @@ pub(crate) fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.lb = Some(Corner {
-        path: vec![Pt(0., leftbottom), Pt(topleft, 1.)],
+        path: [Pt(0., leftbottom), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -1088,7 +1088,7 @@ pub(crate) fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., righttop)],
+        path: [Pt(topright, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -1097,7 +1097,7 @@ pub(crate) fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomleft, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomleft, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -1118,7 +1118,7 @@ pub(crate) fn heptagon_bl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn heptagon_tl(cell: &mut Cell, opt: &Settings) {
+fn heptagon_tl(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_ab(cell.x0, cell.x3, opt.min_v, opt.max_v);
@@ -1127,7 +1127,7 @@ pub(crate) fn heptagon_tl(cell: &mut Cell, opt: &Settings) {
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., lefttop)],
+        path: [Pt(bottomleft, 0.), Pt(0., lefttop)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -1136,16 +1136,16 @@ pub(crate) fn heptagon_tl(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tl = Some(Corner {
-        path: vec![Pt(topleft, 1.), Pt(1., righttop)],
+        path: [Pt(topleft, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
-            x: 0,
-            y: 1,
+            x: 1,
+            y: 0,
             enter: EnterType::LT,
         },
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomright, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,
@@ -1166,7 +1166,7 @@ pub(crate) fn heptagon_tl(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn heptagon_br(cell: &mut Cell, opt: &Settings) {
+fn heptagon_br(cell: &mut Cell, opt: &Settings) {
     let bottomright = interpolate_linear_ab(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
     let lefttop = interpolate_linear_b(cell.x0, cell.x3, opt.min_v, opt.max_v);
@@ -1175,7 +1175,7 @@ pub(crate) fn heptagon_br(cell: &mut Cell, opt: &Settings) {
     let rightbottom = interpolate_linear_ab(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.br = Some(Corner {
-        path: vec![Pt(bottomright, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomright, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -1184,7 +1184,7 @@ pub(crate) fn heptagon_br(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topleft, 1.)],
+        path: [Pt(0., lefttop), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -1193,7 +1193,7 @@ pub(crate) fn heptagon_br(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., rightbottom)],
+        path: [Pt(topright, 1.), Pt(1., rightbottom)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -1214,7 +1214,7 @@ pub(crate) fn heptagon_br(cell: &mut Cell, opt: &Settings) {
     // );
 }
 
-pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
+fn octagon(cell: &mut Cell, opt: &Settings) {
     let bottomleft = interpolate_linear_a(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let bottomright = interpolate_linear_b(cell.x0, cell.x1, opt.min_v, opt.max_v);
     let leftbottom = interpolate_linear_a(cell.x0, cell.x3, opt.min_v, opt.max_v);
@@ -1225,7 +1225,7 @@ pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
     let rightbottom = interpolate_linear_a(cell.x1, cell.x2, opt.min_v, opt.max_v);
 
     cell.edges.bl = Some(Corner {
-        path: vec![Pt(bottomleft, 0.), Pt(0., leftbottom)],
+        path: [Pt(bottomleft, 0.), Pt(0., leftbottom)],
         move_info: MoveInfo {
             x: -1,
             y: 0,
@@ -1234,7 +1234,7 @@ pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.lt = Some(Corner {
-        path: vec![Pt(0., lefttop), Pt(topleft, 1.)],
+        path: [Pt(0., lefttop), Pt(topleft, 1.)],
         move_info: MoveInfo {
             x: 0,
             y: 1,
@@ -1243,7 +1243,7 @@ pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.tr = Some(Corner {
-        path: vec![Pt(topright, 1.), Pt(1., righttop)],
+        path: [Pt(topright, 1.), Pt(1., righttop)],
         move_info: MoveInfo {
             x: 1,
             y: 0,
@@ -1252,7 +1252,7 @@ pub(crate) fn octagon(cell: &mut Cell, opt: &Settings) {
     });
 
     cell.edges.rb = Some(Corner {
-        path: vec![Pt(1., rightbottom), Pt(bottomright, 0.)],
+        path: [Pt(1., rightbottom), Pt(bottomright, 0.)],
         move_info: MoveInfo {
             x: 0,
             y: -1,

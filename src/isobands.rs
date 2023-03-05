@@ -94,7 +94,7 @@ pub(crate) struct MoveInfo {
 
 #[derive(Debug)]
 pub(crate) struct Corner {
-    pub path: Vec<Pt>,
+    pub path: [Pt; 2],
     pub move_info: MoveInfo,
 }
 
@@ -249,7 +249,7 @@ impl ContourBuilder {
                     let polygons = raw_band
                         .iter()
                         .map(|poly| {
-                            println!("{:?}", area(poly));
+                            // println!("{:?}", area(poly));
                             let points: Vec<Point<f64>> = poly
                                 .iter()
                                 .map(|pt| Point::new(pt.0, pt.1))
@@ -319,7 +319,7 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
             // println!("cell_grid: {:?}", cell_grid);
             let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
             // Todo: remove this when done debugging
-            display_debug_info(&band_polygons);
+            // display_debug_info(&band_polygons);
             Ok((band_polygons, opt.min_v, opt.max_v))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
@@ -357,7 +357,7 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
             // println!("cell_grid: {:?}", cell_grid);
             let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
             // Todo: remove this when done debugging
-            display_debug_info(&band_polygons);
+            // display_debug_info(&band_polygons);
             Ok((band_polygons, opt.min_v, opt.max_v))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
