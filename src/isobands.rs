@@ -14,6 +14,47 @@ impl From<Pt> for Coord<f64> {
     }
 }
 
+pub(crate) type GridCoord = (usize, usize);
+
+// pub(crate) struct Grid<T> {
+//     array: Vec<T>,
+//     width: usize,
+//     height: usize,
+// }
+//
+// impl<T> Grid<T> {
+//     pub fn new(width: usize, height: usize) -> Self
+//     where
+//         T: Default,
+//     {
+//         Self {
+//             array: [T::default()].repeat(width * height),
+//             width,
+//             height,
+//         }
+//     }
+//
+//     pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
+//         Self {
+//             array: vec,
+//             width,
+//             height,
+//         }
+//     }
+//
+//     pub fn width(&self) -> usize {
+//         self.width
+//     }
+//
+//     pub fn height(&self) -> usize {
+//         self.height
+//     }
+//
+//     pub fn get(&self, p: GridCoord) -> &T {
+//         &self.array[p.1 * self.width + p.0]
+//     }
+// }
+
 /// An isoband, described by its min and max value and MultiPolygon.
 #[derive(Debug)]
 pub struct Band {
@@ -143,6 +184,8 @@ pub(crate) struct Settings {
     pub min_v: f64,
     pub max_v: f64,
 }
+
+static PRECISION: f64 = 1e-4;
 
 pub struct ContourBuilder {
     /// The horizontal coordinate for the origin of the grid.
@@ -299,14 +342,20 @@ pub fn isobands(
 pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRaw>> {
     let lj = data.len();
     let li = data[0].len();
+    let n_pair_thresholds = thresholds.len() - 1;
 
     let res = thresholds
         .iter()
         .zip(thresholds.iter().skip(1))
-        .map(|(min, max)| -> Result<BandRaw> {
+        .enumerate()
+        .map(|(i, (&min, &max))| -> Result<BandRaw> {
             let opt = Settings {
-                min_v: *min,
-                max_v: *max,
+                min_v: min,
+                max_v: if i + 1 == n_pair_thresholds {
+                    max
+                } else {
+                    max - PRECISION
+                },
             };
 
             let mut cell_grid = Vec::with_capacity(li);
@@ -316,11 +365,10 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
                     cell_grid[i].push(prepare_cell(i, j, data, &opt)?);
                 }
             }
-            // println!("cell_grid: {:?}", cell_grid);
+
             let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
-            // Todo: remove this when done debugging
             // display_debug_info(&band_polygons);
-            Ok((band_polygons, opt.min_v, opt.max_v))
+            Ok((band_polygons, min, max))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
 
@@ -330,15 +378,22 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
 pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRaw>> {
     let lj = data.len();
     let li = data[0].len();
+    let n_pair_thresholds = thresholds.len() - 1;
 
     let tree = QuadTree::new(data);
+
     let res = thresholds
         .iter()
         .zip(thresholds.iter().skip(1))
-        .map(|(min, max)| -> Result<BandRaw> {
+        .enumerate()
+        .map(|(i, (&min, &max))| -> Result<BandRaw> {
             let opt = Settings {
-                min_v: *min,
-                max_v: *max,
+                min_v: min,
+                max_v: if i + 1 == n_pair_thresholds {
+                    max
+                } else {
+                    max - PRECISION
+                },
             };
 
             let mut cell_grid = Vec::with_capacity(li);
@@ -354,11 +409,10 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
                 let j = cell.1;
                 cell_grid[i][j] = prepare_cell(i, j, data, &opt)?;
             }
-            // println!("cell_grid: {:?}", cell_grid);
+
             let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
-            // Todo: remove this when done debugging
             // display_debug_info(&band_polygons);
-            Ok((band_polygons, opt.min_v, opt.max_v))
+            Ok((band_polygons, min, max))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
 

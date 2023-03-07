@@ -1,5 +1,4 @@
-#[derive(Debug)]
-pub(crate) struct GridCoord(pub usize, pub usize);
+use crate::isobands::GridCoord;
 
 #[derive(Debug)]
 pub(crate) struct TreeNode {
@@ -116,7 +115,7 @@ impl TreeNode {
             || self.child_c.is_some()
             || self.child_d.is_some())
         {
-            cells.push(GridCoord(self.x, self.y));
+            cells.push((self.x, self.y));
             cells
         } else {
             if self.child_a.is_some() {
