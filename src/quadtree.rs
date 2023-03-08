@@ -1,4 +1,4 @@
-use crate::isobands::GridCoord;
+use crate::isobands::{Grid, GridCoord, GridTrait};
 
 #[derive(Debug)]
 pub(crate) struct TreeNode {
@@ -13,7 +13,7 @@ pub(crate) struct TreeNode {
 }
 
 impl TreeNode {
-    pub fn new(data: &[Vec<f64>], x: usize, y: usize, dx: usize, dy: usize) -> TreeNode {
+    pub fn new(data: &Grid<f64>, x: usize, y: usize, dx: usize, dy: usize) -> TreeNode {
         let mut dx_tmp = dx;
         let mut dy_tmp = dy;
         let mut msb_x = 0;
@@ -31,10 +31,14 @@ impl TreeNode {
         };
 
         if dx == 1 && dy == 1 {
+            // tn.lower_bound =
+            //     data[(y, x)].min(data[(y + 1, x)].min(data[(y, x + 1)].min(data[(y + 1, x + 1)])));
+            // tn.upper_bound =
+            //     data[(y, x)].max(data[(y + 1, x)].max(data[(y, x + 1)].max(data[(y + 1, x + 1)])));
             tn.lower_bound =
-                data[y][x].min(data[y + 1][x].min(data[y][x + 1].min(data[y + 1][x + 1])));
+                data[(x, y)].min(data[(x + 1, y)].min(data[(x, y + 1)].min(data[(x + 1, y + 1)])));
             tn.upper_bound =
-                data[y][x].max(data[y + 1][x].max(data[y][x + 1].max(data[y + 1][x + 1])));
+                data[(x, y)].max(data[(x + 1, y)].max(data[(x, y + 1)].max(data[(x + 1, y + 1)])));
         } else {
             // Get most significant bit from dx
             if dx > 1 {
@@ -161,9 +165,9 @@ pub(crate) struct QuadTree {
 }
 
 impl QuadTree {
-    pub fn new(data: &[Vec<f64>]) -> QuadTree {
+    pub fn new(data: &Grid<f64>) -> QuadTree {
         QuadTree {
-            root: TreeNode::new(data, 0, 0, data[0].len() - 1, data.len() - 1),
+            root: TreeNode::new(data, 0, 0, data.width() - 1, data.height() - 1),
         }
     }
 

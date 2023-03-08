@@ -423,4 +423,83 @@ mod tests {
         assert_eq!(res[1].1, 5.0);
         assert_eq!(res[1].2, 7.0);
     }
+
+    #[test]
+    /// Test that isobands returns the same result when using a quadtree or not (simple dataset)
+    fn isobands_simple_same_with_quadtree() {
+        let matrix = vec![
+            vec![1., 1., 1., 0.],
+            vec![1., 5., 5., 1.],
+            vec![0., 1., 1., 1.],
+        ];
+        let lower_band = 1.;
+        let bandwidth = 1.;
+
+        let res1 = isobands(&matrix, &[lower_band, lower_band + bandwidth], false).unwrap();
+        let res2 = isobands(&matrix, &[lower_band, lower_band + bandwidth], true).unwrap();
+
+        assert_eq!(res1, res2);
+    }
+
+    #[test]
+    /// Test that isobands returns the same result when using a quadtree or not (volcano dataset)
+    fn isobands_volcano_same_with_quadtree() {
+        let volcano_str = include_str!("../tests/fixtures/volcano.json");
+        let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
+        let raw_matrix: Vec<f64> = raw_data["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.as_f64().unwrap())
+            .collect();
+        let h = raw_data["height"].as_u64().unwrap() as usize;
+        let w = raw_data["width"].as_u64().unwrap() as usize;
+        let mut matrix = Vec::new();
+        for i in 0..h {
+            matrix.push(Vec::new());
+            for j in 0..w {
+                matrix[i].push(raw_matrix[i * 87 + j] as f64);
+            }
+        }
+        let intervals = [
+            90., 95., 100., 105., 110., 115., 120., 125., 130., 135., 140., 145., 150., 155., 160.,
+            165., 170., 175., 180., 185., 190., 195., 200.,
+        ];
+
+        let res1 = isobands(&matrix, &intervals, false).unwrap();
+        let res2 = isobands(&matrix, &intervals, true).unwrap();
+
+        assert_eq!(res1, res2);
+    }
+
+    #[test]
+    /// Test that isobands returns the same result when using a quadtree or not (dataset from https://observablehq.com/@mthh/stewarts-potentials-on-the-gpu)
+    fn isobands_pot_pop_same_with_quadtree() {
+        let volcano_str = include_str!("../tests/fixtures/pot_pop_fr.json");
+        let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
+        let raw_matrix: Vec<f64> = raw_data["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.as_f64().unwrap())
+            .collect();
+        let h = raw_data["height"].as_u64().unwrap() as usize;
+        let w = raw_data["width"].as_u64().unwrap() as usize;
+        let mut matrix = Vec::new();
+        for i in 0..h {
+            matrix.push(Vec::new());
+            for j in 0..w {
+                matrix[i].push(raw_matrix[i * 87 + j] as f64);
+            }
+        }
+        let intervals = [
+            0.001, 105483.25, 527416.25, 1054832.5, 2109665., 3164497.5, 4219330., 5274162.5,
+            6328995., 7383827.5, 8438660., 9704459., 10548326.,
+        ];
+
+        let res1 = isobands(&matrix, &intervals, false).unwrap();
+        let res2 = isobands(&matrix, &intervals, true).unwrap();
+
+        assert_eq!(res1, res2);
+    }
 }

@@ -1,5 +1,5 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::isobands::{Cell, Corner, Edges, EnterType, MoveInfo, Pt, Settings};
+use crate::isobands::{Cell, Corner, Edges, EnterType, Grid, GridTrait, MoveInfo, Pt, Settings};
 
 fn interpolate_linear_ab(a: f64, b: f64, v0: f64, v1: f64) -> f64 {
     let (v0, v1) = if v0 > v1 { (v1, v0) } else { (v0, v1) };
@@ -1277,24 +1277,15 @@ fn octagon(cell: &mut Cell, opt: &Settings) {
 pub(crate) fn prepare_cell(
     x: usize,
     y: usize,
-    data: &[Vec<f64>],
+    data: &Grid<f64>,
     opt: &Settings,
 ) -> Result<Option<Cell>> {
     /*  compose the 4-trit corner representation */
     let mut cval = 0;
-    let x3 = *data
-        .get(y + 1)
-        .and_then(|row| row.get(x))
-        .unwrap_or(&f64::NAN);
-    let x2 = *data
-        .get(y + 1)
-        .and_then(|row| row.get(x + 1))
-        .unwrap_or(&f64::NAN);
-    let x1 = *data
-        .get(y)
-        .and_then(|row| row.get(x + 1))
-        .unwrap_or(&f64::NAN);
-    let x0 = *data.get(y).and_then(|row| row.get(x)).unwrap_or(&f64::NAN);
+    let x3 = *data.get(&(x, y + 1)).unwrap_or(&f64::NAN);
+    let x2 = *data.get(&(x + 1, y + 1)).unwrap_or(&f64::NAN);
+    let x1 = *data.get(&(x + 1, y)).unwrap_or(&f64::NAN);
+    let x0 = *data.get(&(x, y)).unwrap_or(&f64::NAN);
 
     if x0.is_nan() || x1.is_nan() || x2.is_nan() || x3.is_nan() {
         return Ok(None);

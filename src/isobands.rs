@@ -16,71 +16,104 @@ impl From<Pt> for Coord<f64> {
 
 pub(crate) type GridCoord = (usize, usize);
 
-// pub(crate) trait GridTrait<T> {
-//     fn width(&self) -> usize;
-//     fn height(&self) -> usize;
-//     fn has(&self, p: GridCoord) -> bool;
-//     fn get(&self, p: GridCoord) -> Option<&T>;
-// }
-// pub(crate) struct Grid<T> {
-//     array: Vec<T>,
-//     width: usize,
-//     height: usize,
-// }
-//
-// impl<T> Grid<T> {
-//     pub fn new(width: usize, height: usize) -> Self
-//     where
-//         T: Default + Copy,
-//     {
-//         Self {
-//             array: [T::default()].repeat(width * height),
-//             width,
-//             height,
-//         }
-//     }
-//
-//     pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
-//         if vec.len() != width * height {
-//             panic!("Invalid grid dimensions");
-//         }
-//         Self {
-//             array: vec,
-//             width,
-//             height,
-//         }
-//     }
-// }
-//
-// impl<T> GridTrait<T> for Grid<T> {
-//     fn width(&self) -> usize {
-//         self.width
-//     }
-//
-//     fn height(&self) -> usize {
-//         self.height
-//     }
-//
-//     fn get(&self, p: GridCoord) -> Option<&T> {
-//         if p.0 >= self.width || p.1 >= self.height {
-//             None
-//         } else {
-//             Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
-//         }
-//     }
-// }
-//
-// impl Into<Grid<f64>> for &[Vec<f64>] {
-//     fn into(self) -> Grid<f64> {
-//         let width = self[0].len();
-//         let height = self.len();
-//         Grid::new_from_vec(
-//             self.into_iter().flatten().collect(),
-//             width,
-//             height,
-//         )
-//     }
-// }
+pub(crate) trait GridTrait<T> {
+    fn width(&self) -> usize;
+    fn height(&self) -> usize;
+    fn has(&self, p: &GridCoord) -> bool;
+    fn get(&self, p: &GridCoord) -> Option<&T>;
+}
+
+#[derive(Debug)]
+pub(crate) struct Grid<T> {
+    array: Vec<T>,
+    width: usize,
+    height: usize,
+}
+
+impl<T> Grid<T> {
+    pub fn new(width: usize, height: usize) -> Self
+    where
+        T: Default + Copy,
+    {
+        Self {
+            array: [T::default()].repeat(width * height),
+            width,
+            height,
+        }
+    }
+
+    pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
+        if vec.len() != width * height {
+            panic!("Invalid grid dimensions");
+        }
+        Self {
+            array: vec,
+            width,
+            height,
+        }
+    }
+
+    pub fn iter_rows(&self) -> impl Iterator<Item = &[T]> {
+        self.array.chunks(self.width)
+    }
+}
+
+impl<T> GridTrait<T> for Grid<T> {
+    fn width(&self) -> usize {
+        self.width
+    }
+
+    fn height(&self) -> usize {
+        self.height
+    }
+
+    fn has(&self, p: &GridCoord) -> bool {
+        p.0 >= 0 && p.0 < self.width && p.1 >= 0 && p.1 < self.height
+    }
+
+    fn get(&self, p: &GridCoord) -> Option<&T> {
+        if !self.has(p) {
+            None
+        } else {
+            Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
+        }
+    }
+}
+
+impl<T> std::ops::Index<GridCoord> for Grid<T> {
+    type Output = T;
+
+    fn index(&self, p: GridCoord) -> &Self::Output {
+        if !self.has(&p) {
+            panic!("Invalid grid coordinate");
+        }
+        unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
+    }
+}
+
+impl<T> std::ops::IndexMut<GridCoord> for Grid<T> {
+    fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
+        if !self.has(&p) {
+            panic!("Invalid grid coordinate");
+        }
+        unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
+    }
+}
+
+impl<T> Into<Grid<T>> for &[Vec<T>]
+where
+    T: Copy,
+{
+    fn into(self) -> Grid<T> {
+        let width = self[0].len();
+        let height = self.len();
+        let mut new_vec = Vec::with_capacity(width * height);
+        for row in self {
+            new_vec.extend_from_slice(row);
+        }
+        Grid::new_from_vec(new_vec, width, height)
+    }
+}
 //
 // impl Into<Grid<f64>> for Vec<Vec<f64>> {
 //     fn into(self) -> Grid<f64> {
@@ -89,43 +122,67 @@ pub(crate) type GridCoord = (usize, usize);
 //         Grid::new_from_vec(self.into_iter().flatten().collect(), width, height)
 //     }
 // }
-//
-// pub(crate) struct OwnedGrid<'a, T> {
-//     array: &'a Vec<T>,
-//     width: usize,
-//     height: usize,
-// }
-//
-// impl<'a, T> OwnedGrid<'a, T> {
-//     pub fn new(array: &'a Vec<T>, width: usize, height: usize) -> Self {
-//         if array.len() != width * height {
-//             panic!("Invalid grid dimensions");
-//         }
-//         Self {
-//             array,
-//             width,
-//             height,
-//         }
-//     }
-// }
-//
-// impl<'a, T> GridTrait<T> for OwnedGrid<'a, T> {
-//     fn width(&self) -> usize {
-//         self.width
-//     }
-//
-//     fn height(&self) -> usize {
-//         self.height
-//     }
-//
-//     fn get(&self, p: GridCoord) -> Option<&T> {
-//         if p.0 >= self.width || p.1 >= self.height {
-//             None
-//         } else {
-//             Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
-//         }
-//     }
-// }
+
+pub(crate) struct OwnedGrid<'a, T> {
+    array: &'a mut Vec<T>,
+    width: usize,
+    height: usize,
+}
+
+impl<'a, T> OwnedGrid<'a, T> {
+    pub fn new(array: &'a mut Vec<T>, width: usize, height: usize) -> Self {
+        if array.len() != width * height {
+            panic!("Invalid grid dimensions");
+        }
+        Self {
+            array,
+            width,
+            height,
+        }
+    }
+}
+
+impl<'a, T> GridTrait<T> for OwnedGrid<'a, T> {
+    fn width(&self) -> usize {
+        self.width
+    }
+
+    fn height(&self) -> usize {
+        self.height
+    }
+
+    fn has(&self, p: &GridCoord) -> bool {
+        p.0 >= 0 && p.0 < self.width && p.1 >= 0 && p.1 < self.height
+    }
+
+    fn get(&self, p: &GridCoord) -> Option<&T> {
+        if !self.has(p) {
+            None
+        } else {
+            Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
+        }
+    }
+}
+
+impl<'a, T> std::ops::Index<GridCoord> for OwnedGrid<'a, T> {
+    type Output = T;
+
+    fn index(&self, p: GridCoord) -> &Self::Output {
+        if !self.has(&p) {
+            panic!("Invalid grid coord");
+        }
+        unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
+    }
+}
+
+impl<'a, T> std::ops::IndexMut<GridCoord> for OwnedGrid<'a, T> {
+    fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
+        if !self.has(&p) {
+            panic!("Invalid grid coord");
+        }
+        unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
+    }
+}
 
 type BandRaw = (Vec<Vec<Pt>>, f64, f64);
 
@@ -407,6 +464,7 @@ pub fn isobands(
     if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
+
     if use_quad_tree {
         _isobands_quadtree_raw(data, thresholds)
     } else {
@@ -418,6 +476,15 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
     let lj = data.len();
     let li = data[0].len();
     let n_pair_thresholds = thresholds.len() - 1;
+
+    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
+    for i in 0..li - 1 {
+        cell_grid.push(Vec::with_capacity(lj - 1));
+        for j in 0..lj - 1 {
+            cell_grid[i].push(None);
+        }
+    }
+    let fvec: Grid<f64> = data.into();
 
     let res = thresholds
         .iter()
@@ -433,15 +500,13 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
                 },
             };
 
-            let mut cell_grid = Vec::with_capacity(li);
             for i in 0..li - 1 {
-                cell_grid.push(Vec::with_capacity(lj));
                 for j in 0..lj - 1 {
-                    cell_grid[i].push(prepare_cell(i, j, data, &opt)?);
+                    cell_grid[i][j] = prepare_cell(i, j, &fvec, &opt)?;
                 }
             }
 
-            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+            let band_polygons = trace_band_paths(&fvec, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
             Ok((band_polygons, min, max))
         })
@@ -455,7 +520,16 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
     let li = data[0].len();
     let n_pair_thresholds = thresholds.len() - 1;
 
-    let tree = QuadTree::new(data);
+    let fvec: Grid<f64> = data.into();
+    let tree = QuadTree::new(&fvec);
+
+    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
+    for i in 0..li - 1 {
+        cell_grid.push(Vec::with_capacity(lj - 1));
+        for j in 0..lj - 1 {
+            cell_grid[i].push(None);
+        }
+    }
 
     let res = thresholds
         .iter()
@@ -471,21 +545,21 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
                 },
             };
 
-            let mut cell_grid = Vec::with_capacity(li);
-            for i in 0..li - 1 {
-                cell_grid.push(Vec::with_capacity(lj));
-                for _j in 0..lj - 1 {
-                    cell_grid[i].push(None);
+            if i > 0 {
+                for i in 0..li - 1 {
+                    for j in 0..lj - 1 {
+                        cell_grid[i][j] = None;
+                    }
                 }
             }
 
             for cell in tree.cells_in_band(opt.min_v, opt.max_v) {
                 let i = cell.0;
                 let j = cell.1;
-                cell_grid[i][j] = prepare_cell(i, j, data, &opt)?;
+                cell_grid[i][j] = prepare_cell(i, j, &fvec, &opt)?;
             }
 
-            let band_polygons = trace_band_paths(data, &mut cell_grid, &opt)?;
+            let band_polygons = trace_band_paths(&fvec, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
             Ok((band_polygons, min, max))
         })

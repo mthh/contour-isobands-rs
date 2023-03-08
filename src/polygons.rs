@@ -1,12 +1,14 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::isobands::{Cell, EnterType, Pt, Settings};
+use crate::isobands::{Cell, EnterType, Grid, GridTrait, Pt, Settings};
 
-fn require_frame(data: &[Vec<f64>], lowerbound: f64, upperbound: f64) -> bool {
+fn require_frame(data: &Grid<f64>, lowerbound: f64, upperbound: f64) -> bool {
     let mut frame_required: bool = true;
-    let rows = data.len();
-    let cols = data[0].len();
+    // let rows = data.len();
+    // let cols = data[0].len();
+    let rows = data.height();
+    let cols = data.width();
 
-    for row in data.iter() {
+    for row in data.iter_rows() {
         if row[0] < lowerbound
             || row[0] > upperbound
             || row[cols - 1] < lowerbound
@@ -17,20 +19,20 @@ fn require_frame(data: &[Vec<f64>], lowerbound: f64, upperbound: f64) -> bool {
         }
     }
 
-    if frame_required && data[rows - 1][0] < lowerbound
-        || data[rows - 1][0] > upperbound
-        || data[rows - 1][cols - 1] < lowerbound
-        || data[rows - 1][cols - 1] > upperbound
+    if frame_required && data[(cols - 1, 0)] < lowerbound
+        || data[(cols - 1, 0)] > upperbound
+        || data[(cols - 1, rows - 1)] < lowerbound
+        || data[(cols - 1, rows - 1)] > upperbound
     {
         frame_required = false;
     }
 
     if frame_required {
         for i in 0..cols {
-            if data[0][i] < lowerbound
-                || data[0][i] > upperbound
-                || data[rows - 1][i] < lowerbound
-                || data[rows - 1][i] > upperbound
+            if data[(i, 0)] < lowerbound
+                || data[(i, 0)] > upperbound
+                || data[(i, rows - 1)] < lowerbound
+                || data[(i, rows - 1)] > upperbound
             {
                 frame_required = false;
                 break;
@@ -83,13 +85,15 @@ fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
 }
 
 pub(crate) fn trace_band_paths(
-    data: &[Vec<f64>],
+    data: &Grid<f64>,
     cell_grid: &mut Vec<Vec<Option<Cell>>>,
     opt: &Settings,
 ) -> Result<Vec<Vec<Pt>>> {
     let mut polygons: Vec<Vec<Pt>> = Vec::new();
-    let rows = data.len() - 1;
-    let cols = data[0].len() - 1;
+    // let rows = data.len() - 1;
+    // let cols = data[0].len() - 1;
+    let rows = data.height() - 1;
+    let cols = data.width() - 1;
 
     let available_starts = [
         EnterType::BL,
