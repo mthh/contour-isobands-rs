@@ -84,6 +84,15 @@ fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
     Pt(x as f64, y as f64)
 }
 
+fn entry_dir(e: &EnterType) -> usize {
+    match e {
+        EnterType::RT | EnterType::RB => 0,
+        EnterType::BL | EnterType::BR => 1,
+        EnterType::LB | EnterType::LT => 2,
+        EnterType::TL | EnterType::TR => 3,
+    }
+}
+
 pub(crate) fn trace_band_paths(
     data: &Grid<f64>,
     cell_grid: &mut Vec<Vec<Option<Cell>>>,
@@ -108,13 +117,6 @@ pub(crate) fn trace_band_paths(
 
     let add_x = [0, -1, 0, 1];
     let add_y = [-1, 0, 1, 0];
-
-    let entry_dir = |e: &EnterType| match e {
-        EnterType::RT | EnterType::RB => 0,
-        EnterType::BL | EnterType::BR => 1,
-        EnterType::LB | EnterType::LT => 2,
-        EnterType::TL | EnterType::TR => 3,
-    };
 
     let valid_entries = [
         [EnterType::RT, EnterType::RB], /* down */
@@ -159,14 +161,17 @@ pub(crate) fn trace_band_paths(
                                 return Err(new_error(ErrorKind::OutOfBounds));
                             }
 
-                            let mut _cc = cell_grid[x as usize][y as usize].as_mut();
                             // println!("x: {}, y: {}, enter: {:?}, cc: {:?}", x, y, enter, _cc);
-                            if _cc.is_none() {
-                                break;
-                            }
-                            let mut cc = _cc.unwrap();
+                            // let mut _cc = cell_grid[x as usize][y as usize].as_mut();
+                            // if _cc.is_none() {
+                            //     break;
+                            // }
+                            // let mut cc = _cc.unwrap();
+                            // I think we know that cc is not None here, so we can unwrap it directly
+                            let mut cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
+
                             /* remove edge from cell */
-                            let mut _ee = cc.edges.get_remove(&enter);
+                            let mut _ee = cc.edges.remove(&enter);
                             if _ee.is_none() {
                                 break;
                             }

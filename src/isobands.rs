@@ -4,15 +4,16 @@ use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
 use geo_types::{Coord, MultiPolygon, Point, Polygon};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pt(pub f64, pub f64);
 
-impl From<Pt> for Coord<f64> {
-    fn from(pt: Pt) -> Self {
-        Coord { x: pt.0, y: pt.1 }
-    }
-}
+// impl From<Pt> for Coord<f64> {
+//     fn from(pt: Pt) -> Self {
+//         Coord { x: pt.0, y: pt.1 }
+//     }
+// }
 
 pub(crate) type GridCoord = (usize, usize);
 
@@ -84,18 +85,18 @@ impl<T> std::ops::Index<GridCoord> for Grid<T> {
     type Output = T;
 
     fn index(&self, p: GridCoord) -> &Self::Output {
-        if !self.has(&p) {
-            panic!("Invalid grid coordinate");
-        }
+        // if !self.has(&p) {
+        //     panic!("Invalid grid coordinate");
+        // }
         unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
     }
 }
 
 impl<T> std::ops::IndexMut<GridCoord> for Grid<T> {
     fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-        if !self.has(&p) {
-            panic!("Invalid grid coordinate");
-        }
+        // if !self.has(&p) {
+        //     panic!("Invalid grid coordinate");
+        // }
         unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
     }
 }
@@ -114,14 +115,6 @@ where
         Grid::new_from_vec(new_vec, width, height)
     }
 }
-//
-// impl Into<Grid<f64>> for Vec<Vec<f64>> {
-//     fn into(self) -> Grid<f64> {
-//         let width = self[0].len();
-//         let height = self.len();
-//         Grid::new_from_vec(self.into_iter().flatten().collect(), width, height)
-//     }
-// }
 
 pub(crate) struct OwnedGrid<'a, T> {
     array: &'a mut Vec<T>,
@@ -168,18 +161,18 @@ impl<'a, T> std::ops::Index<GridCoord> for OwnedGrid<'a, T> {
     type Output = T;
 
     fn index(&self, p: GridCoord) -> &Self::Output {
-        if !self.has(&p) {
-            panic!("Invalid grid coord");
-        }
+        // if !self.has(&p) {
+        //     panic!("Invalid grid coord");
+        // }
         unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
     }
 }
 
 impl<'a, T> std::ops::IndexMut<GridCoord> for OwnedGrid<'a, T> {
     fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-        if !self.has(&p) {
-            panic!("Invalid grid coord");
-        }
+        // if !self.has(&p) {
+        //     panic!("Invalid grid coord");
+        // }
         unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
     }
 }
@@ -240,13 +233,13 @@ pub(crate) struct Cell {
     pub x1: f64,
     pub x2: f64,
     pub x3: f64,
-    pub edges: Edges,
+    pub edges: HashMap<EnterType, Edge>,
     // pub polygons: Vec<Vec<Pt>>,
     // pub x: usize,
     // pub y: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum EnterType {
     TL,
     LT,
@@ -266,49 +259,9 @@ pub(crate) struct MoveInfo {
 }
 
 #[derive(Debug)]
-pub(crate) struct Corner {
+pub(crate) struct Edge {
     pub path: [Pt; 2],
     pub move_info: MoveInfo,
-}
-
-#[derive(Debug)]
-pub(crate) struct Edges {
-    pub lb: Option<Corner>,
-    pub bl: Option<Corner>,
-    pub br: Option<Corner>,
-    pub rb: Option<Corner>,
-    pub rt: Option<Corner>,
-    pub tr: Option<Corner>,
-    pub tl: Option<Corner>,
-    pub lt: Option<Corner>,
-}
-
-impl Edges {
-    pub fn get(&self, enter: &EnterType) -> Option<&Corner> {
-        match enter {
-            EnterType::TL => self.tl.as_ref(),
-            EnterType::LT => self.lt.as_ref(),
-            EnterType::LB => self.lb.as_ref(),
-            EnterType::BL => self.bl.as_ref(),
-            EnterType::BR => self.br.as_ref(),
-            EnterType::RB => self.rb.as_ref(),
-            EnterType::RT => self.rt.as_ref(),
-            EnterType::TR => self.tr.as_ref(),
-        }
-    }
-
-    pub fn get_remove(&mut self, enter: &EnterType) -> Option<Corner> {
-        match enter {
-            EnterType::TL => self.tl.take(),
-            EnterType::LT => self.lt.take(),
-            EnterType::LB => self.lb.take(),
-            EnterType::BL => self.bl.take(),
-            EnterType::BR => self.br.take(),
-            EnterType::RB => self.rb.take(),
-            EnterType::RT => self.rt.take(),
-            EnterType::TR => self.tr.take(),
-        }
-    }
 }
 
 #[derive(Debug)]
