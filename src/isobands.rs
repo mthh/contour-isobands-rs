@@ -1,5 +1,5 @@
 use crate::area::{area, contains};
-use crate::errors::{new_error, ErrorKind, Result};
+use crate::errors::{new_error, Error, ErrorKind, Result};
 use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
@@ -68,7 +68,7 @@ impl<T> GridTrait<T> for Grid<T> {
     }
 
     fn has(&self, p: &GridCoord) -> bool {
-        p.0 >= 0 && p.0 < self.width && p.1 >= 0 && p.1 < self.height
+        p.0 < self.width && p.1 < self.height
     }
 
     fn get(&self, p: &GridCoord) -> Option<&T> {
@@ -100,15 +100,15 @@ impl<T> std::ops::IndexMut<GridCoord> for Grid<T> {
     }
 }
 
-impl<T> Into<Grid<T>> for &[Vec<T>]
+impl<T> From<&[Vec<T>]> for Grid<T>
 where
     T: Copy,
 {
-    fn into(self) -> Grid<T> {
-        let width = self[0].len();
-        let height = self.len();
+    fn from(vec: &[Vec<T>]) -> Self {
+        let width = vec[0].len();
+        let height = vec.len();
         let mut new_vec = Vec::with_capacity(width * height);
-        for row in self {
+        for row in vec {
             new_vec.extend_from_slice(row);
         }
         Grid::new_from_vec(new_vec, width, height)
@@ -152,7 +152,7 @@ impl<'a, T> GridTrait<T> for OwnedGrid<'a, T> {
     }
 
     fn has(&self, p: &GridCoord) -> bool {
-        p.0 >= 0 && p.0 < self.width && p.1 >= 0 && p.1 < self.height
+        p.0 < self.width && p.1 < self.height
     }
 
     fn get(&self, p: &GridCoord) -> Option<&T> {
@@ -472,18 +472,26 @@ pub fn isobands(
     }
 }
 
+fn empty_cell_grid(li: usize, lj: usize) -> Vec<Vec<Option<Cell>>> {
+    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
+    for i in 0..li - 1 {
+        cell_grid.push(Vec::with_capacity(lj - 1));
+        for _j in 0..lj - 1 {
+            cell_grid[i].push(None);
+        }
+    }
+    cell_grid
+}
+
 pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRaw>> {
     let lj = data.len();
     let li = data[0].len();
     let n_pair_thresholds = thresholds.len() - 1;
 
-    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
-    for i in 0..li - 1 {
-        cell_grid.push(Vec::with_capacity(lj - 1));
-        for j in 0..lj - 1 {
-            cell_grid[i].push(None);
-        }
-    }
+    // Allocate the cell grid once
+    let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
+
+    // Convert input data to a 1d-vec based grid
     let fvec: Grid<f64> = data.into();
 
     let res = thresholds
@@ -491,6 +499,7 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
         .zip(thresholds.iter().skip(1))
         .enumerate()
         .map(|(i, (&min, &max))| -> Result<BandRaw> {
+            // Store min / max values for the current band
             let opt = Settings {
                 min_v: min,
                 max_v: if i + 1 == n_pair_thresholds {
@@ -500,11 +509,13 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
                 },
             };
 
-            for i in 0..li - 1 {
-                for j in 0..lj - 1 {
-                    cell_grid[i][j] = prepare_cell(i, j, &fvec, &opt)?;
-                }
-            }
+            // Fill up the grid with cell information
+            cell_grid.iter_mut().enumerate().try_for_each(|(i, row)| {
+                row.iter_mut().enumerate().try_for_each(|(j, cell)| {
+                    *cell = prepare_cell(i, j, &fvec, &opt)?;
+                    Ok::<(), Error>(())
+                })
+            })?;
 
             let band_polygons = trace_band_paths(&fvec, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
@@ -520,22 +531,21 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
     let li = data[0].len();
     let n_pair_thresholds = thresholds.len() - 1;
 
+    // Convert input data to a 1d-vec based grid
     let fvec: Grid<f64> = data.into();
+
+    // Instantiate the quadtree
     let tree = QuadTree::new(&fvec);
 
-    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
-    for i in 0..li - 1 {
-        cell_grid.push(Vec::with_capacity(lj - 1));
-        for j in 0..lj - 1 {
-            cell_grid[i].push(None);
-        }
-    }
+    // Allocate the cell grid once
+    let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
 
     let res = thresholds
         .iter()
         .zip(thresholds.iter().skip(1))
         .enumerate()
         .map(|(i, (&min, &max))| -> Result<BandRaw> {
+            // Store min / max values for the current band
             let opt = Settings {
                 min_v: min,
                 max_v: if i + 1 == n_pair_thresholds {
@@ -545,14 +555,16 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
                 },
             };
 
+            // Clear the grid
             if i > 0 {
-                for i in 0..li - 1 {
-                    for j in 0..lj - 1 {
-                        cell_grid[i][j] = None;
-                    }
-                }
+                cell_grid.iter_mut().for_each(|row| {
+                    row.iter_mut().for_each(|cell| {
+                        *cell = None;
+                    })
+                });
             }
 
+            // Fill up the grid with cell information
             for cell in tree.cells_in_band(opt.min_v, opt.max_v) {
                 let i = cell.0;
                 let j = cell.1;
