@@ -16,6 +16,12 @@ impl From<Pt> for Coord<f64> {
 
 pub(crate) type GridCoord = (usize, usize);
 
+// pub(crate) trait GridTrait<T> {
+//     fn width(&self) -> usize;
+//     fn height(&self) -> usize;
+//     fn has(&self, p: GridCoord) -> bool;
+//     fn get(&self, p: GridCoord) -> Option<&T>;
+// }
 // pub(crate) struct Grid<T> {
 //     array: Vec<T>,
 //     width: usize,
@@ -25,7 +31,7 @@ pub(crate) type GridCoord = (usize, usize);
 // impl<T> Grid<T> {
 //     pub fn new(width: usize, height: usize) -> Self
 //     where
-//         T: Default,
+//         T: Default + Copy,
 //     {
 //         Self {
 //             array: [T::default()].repeat(width * height),
@@ -35,35 +41,104 @@ pub(crate) type GridCoord = (usize, usize);
 //     }
 //
 //     pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
+//         if vec.len() != width * height {
+//             panic!("Invalid grid dimensions");
+//         }
 //         Self {
 //             array: vec,
 //             width,
 //             height,
 //         }
 //     }
+// }
 //
-//     pub fn width(&self) -> usize {
+// impl<T> GridTrait<T> for Grid<T> {
+//     fn width(&self) -> usize {
 //         self.width
 //     }
 //
-//     pub fn height(&self) -> usize {
+//     fn height(&self) -> usize {
 //         self.height
 //     }
 //
-//     pub fn get(&self, p: GridCoord) -> &T {
-//         &self.array[p.1 * self.width + p.0]
+//     fn get(&self, p: GridCoord) -> Option<&T> {
+//         if p.0 >= self.width || p.1 >= self.height {
+//             None
+//         } else {
+//             Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
+//         }
 //     }
 // }
+//
+// impl Into<Grid<f64>> for &[Vec<f64>] {
+//     fn into(self) -> Grid<f64> {
+//         let width = self[0].len();
+//         let height = self.len();
+//         Grid::new_from_vec(
+//             self.into_iter().flatten().collect(),
+//             width,
+//             height,
+//         )
+//     }
+// }
+//
+// impl Into<Grid<f64>> for Vec<Vec<f64>> {
+//     fn into(self) -> Grid<f64> {
+//         let width = self[0].len();
+//         let height = self.len();
+//         Grid::new_from_vec(self.into_iter().flatten().collect(), width, height)
+//     }
+// }
+//
+// pub(crate) struct OwnedGrid<'a, T> {
+//     array: &'a Vec<T>,
+//     width: usize,
+//     height: usize,
+// }
+//
+// impl<'a, T> OwnedGrid<'a, T> {
+//     pub fn new(array: &'a Vec<T>, width: usize, height: usize) -> Self {
+//         if array.len() != width * height {
+//             panic!("Invalid grid dimensions");
+//         }
+//         Self {
+//             array,
+//             width,
+//             height,
+//         }
+//     }
+// }
+//
+// impl<'a, T> GridTrait<T> for OwnedGrid<'a, T> {
+//     fn width(&self) -> usize {
+//         self.width
+//     }
+//
+//     fn height(&self) -> usize {
+//         self.height
+//     }
+//
+//     fn get(&self, p: GridCoord) -> Option<&T> {
+//         if p.0 >= self.width || p.1 >= self.height {
+//             None
+//         } else {
+//             Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
+//         }
+//     }
+// }
+
+type BandRaw = (Vec<Vec<Pt>>, f64, f64);
 
 /// An isoband, described by its min and max value and MultiPolygon.
 #[derive(Debug)]
 pub struct Band {
+    /// The minimum value of the isoband
     pub min_v: f64,
+    /// The maximum value of the isoband
     pub max_v: f64,
+    /// The MultiPolygon enclosing the points between min_v and max_v
     pub polygons: MultiPolygon<f64>,
 }
-
-type BandRaw = (Vec<Vec<Pt>>, f64, f64);
 
 impl Band {
     pub fn geometry(&self) -> &MultiPolygon<f64> {
