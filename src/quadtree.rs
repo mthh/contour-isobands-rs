@@ -1,4 +1,4 @@
-use crate::isobands::{Grid, GridCoord, GridTrait};
+use crate::grid::{BorrowedGrid, GridCoord, GridTrait};
 
 #[derive(Debug)]
 pub(crate) struct TreeNode {
@@ -13,7 +13,7 @@ pub(crate) struct TreeNode {
 }
 
 impl TreeNode {
-    pub fn new(data: &Grid<f64>, x: usize, y: usize, dx: usize, dy: usize) -> TreeNode {
+    pub fn new(data: &BorrowedGrid<f64>, x: usize, y: usize, dx: usize, dy: usize) -> TreeNode {
         let mut dx_tmp = dx;
         let mut dy_tmp = dy;
         let mut msb_x = 0;
@@ -165,7 +165,7 @@ pub(crate) struct QuadTree {
 }
 
 impl QuadTree {
-    pub fn new(data: &Grid<f64>) -> QuadTree {
+    pub fn new(data: &BorrowedGrid<f64>) -> QuadTree {
         QuadTree {
             root: TreeNode::new(data, 0, 0, data.width() - 1, data.height() - 1),
         }
@@ -173,5 +173,39 @@ impl QuadTree {
 
     pub fn cells_in_band(&self, lowerbound: f64, upperbound: f64) -> Vec<GridCoord> {
         self.root.cells_in_band(lowerbound, upperbound)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::grid::BorrowedGrid;
+    use crate::quadtree::QuadTree;
+
+    #[test]
+    fn test_partition_quadtree() {
+        let data = vec![
+            1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
+        ];
+        let width = 4;
+        let height = 4;
+        let grid = BorrowedGrid::new(&data, width, height);
+        let quadtree = QuadTree::new(&grid);
+
+        assert_eq!(quadtree.root.child_a.as_ref().unwrap().lower_bound, 1.);
+        assert_eq!(quadtree.root.child_a.as_ref().unwrap().upper_bound, 11.);
+        assert_eq!(quadtree.root.child_a.as_ref().unwrap().x, 0);
+        assert_eq!(quadtree.root.child_a.as_ref().unwrap().y, 0);
+        assert_eq!(quadtree.root.child_b.as_ref().unwrap().lower_bound, 3.);
+        assert_eq!(quadtree.root.child_b.as_ref().unwrap().upper_bound, 12.);
+        assert_eq!(quadtree.root.child_b.as_ref().unwrap().x, 2);
+        assert_eq!(quadtree.root.child_b.as_ref().unwrap().y, 0);
+        assert_eq!(quadtree.root.child_c.as_ref().unwrap().lower_bound, 11.);
+        assert_eq!(quadtree.root.child_c.as_ref().unwrap().upper_bound, 16.);
+        assert_eq!(quadtree.root.child_c.as_ref().unwrap().x, 2);
+        assert_eq!(quadtree.root.child_c.as_ref().unwrap().y, 2);
+        assert_eq!(quadtree.root.child_d.as_ref().unwrap().lower_bound, 9.);
+        assert_eq!(quadtree.root.child_d.as_ref().unwrap().upper_bound, 15.);
+        assert_eq!(quadtree.root.child_d.as_ref().unwrap().x, 0);
+        assert_eq!(quadtree.root.child_d.as_ref().unwrap().y, 2);
     }
 }

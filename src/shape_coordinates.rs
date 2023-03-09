@@ -1,6 +1,7 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::isobands::{Cell, Edge, EnterType, Grid, GridTrait, MoveInfo, Pt, Settings};
-use std::collections::HashMap;
+use crate::grid::{BorrowedGrid, GridTrait};
+use crate::isobands::{Cell, Edge, EnterType, MoveInfo, Pt, Settings};
+use rustc_hash::FxHashMap;
 
 fn interpolate_linear_ab(a: f64, b: f64, v0: f64, v1: f64) -> f64 {
     let (v0, v1) = if v0 > v1 { (v1, v0) } else { (v0, v1) };
@@ -1482,7 +1483,7 @@ fn octagon(cell: &mut Cell, opt: &Settings) {
 pub(crate) fn prepare_cell(
     x: usize,
     y: usize,
-    data: &Grid<f64>,
+    data: &BorrowedGrid<f64>,
     opt: &Settings,
 ) -> Result<Option<Cell>> {
     /*  compose the 4-trit corner representation */
@@ -1573,7 +1574,7 @@ pub(crate) fn prepare_cell(
         x1,
         x2,
         x3,
-        edges: HashMap::new(),
+        edges: FxHashMap::default()
         // polygons: Vec::new(),
     };
 

@@ -1,10 +1,11 @@
 use crate::area::{area, contains};
 use crate::errors::{new_error, Error, ErrorKind, Result};
+use crate::grid::{BorrowedGrid, GridTrait};
 use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
-use geo_types::{Coord, MultiPolygon, Point, Polygon};
-use std::collections::HashMap;
+use geo_types::{MultiPolygon, Point, Polygon};
+use rustc_hash::FxHashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pt(pub f64, pub f64);
@@ -15,169 +16,11 @@ pub struct Pt(pub f64, pub f64);
 //     }
 // }
 
-pub(crate) type GridCoord = (usize, usize);
-
-pub(crate) trait GridTrait<T> {
-    fn width(&self) -> usize;
-    fn height(&self) -> usize;
-    fn has(&self, p: &GridCoord) -> bool;
-    fn get(&self, p: &GridCoord) -> Option<&T>;
-}
-
-#[derive(Debug)]
-pub(crate) struct Grid<T> {
-    array: Vec<T>,
-    width: usize,
-    height: usize,
-}
-
-impl<T> Grid<T> {
-    pub fn new(width: usize, height: usize) -> Self
-    where
-        T: Default + Copy,
-    {
-        Self {
-            array: [T::default()].repeat(width * height),
-            width,
-            height,
-        }
-    }
-
-    pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
-        if vec.len() != width * height {
-            panic!("Invalid grid dimensions");
-        }
-        Self {
-            array: vec,
-            width,
-            height,
-        }
-    }
-
-    pub fn iter_rows(&self) -> impl Iterator<Item = &[T]> {
-        self.array.chunks(self.width)
-    }
-}
-
-impl<T> GridTrait<T> for Grid<T> {
-    fn width(&self) -> usize {
-        self.width
-    }
-
-    fn height(&self) -> usize {
-        self.height
-    }
-
-    fn has(&self, p: &GridCoord) -> bool {
-        p.0 < self.width && p.1 < self.height
-    }
-
-    fn get(&self, p: &GridCoord) -> Option<&T> {
-        if !self.has(p) {
-            None
-        } else {
-            Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
-        }
-    }
-}
-
-impl<T> std::ops::Index<GridCoord> for Grid<T> {
-    type Output = T;
-
-    fn index(&self, p: GridCoord) -> &Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coordinate");
-        // }
-        unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
-    }
-}
-
-impl<T> std::ops::IndexMut<GridCoord> for Grid<T> {
-    fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coordinate");
-        // }
-        unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
-    }
-}
-
-impl<T> From<&[Vec<T>]> for Grid<T>
-where
-    T: Copy,
-{
-    fn from(vec: &[Vec<T>]) -> Self {
-        let width = vec[0].len();
-        let height = vec.len();
-        let mut new_vec = Vec::with_capacity(width * height);
-        for row in vec {
-            new_vec.extend_from_slice(row);
-        }
-        Grid::new_from_vec(new_vec, width, height)
-    }
-}
-
-pub(crate) struct OwnedGrid<'a, T> {
-    array: &'a mut Vec<T>,
-    width: usize,
-    height: usize,
-}
-
-impl<'a, T> OwnedGrid<'a, T> {
-    pub fn new(array: &'a mut Vec<T>, width: usize, height: usize) -> Self {
-        if array.len() != width * height {
-            panic!("Invalid grid dimensions");
-        }
-        Self {
-            array,
-            width,
-            height,
-        }
-    }
-}
-
-impl<'a, T> GridTrait<T> for OwnedGrid<'a, T> {
-    fn width(&self) -> usize {
-        self.width
-    }
-
-    fn height(&self) -> usize {
-        self.height
-    }
-
-    fn has(&self, p: &GridCoord) -> bool {
-        p.0 < self.width && p.1 < self.height
-    }
-
-    fn get(&self, p: &GridCoord) -> Option<&T> {
-        if !self.has(p) {
-            None
-        } else {
-            Some(unsafe { self.array.get_unchecked(p.1 * self.width + p.0) })
-        }
-    }
-}
-
-impl<'a, T> std::ops::Index<GridCoord> for OwnedGrid<'a, T> {
-    type Output = T;
-
-    fn index(&self, p: GridCoord) -> &Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coord");
-        // }
-        unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
-    }
-}
-
-impl<'a, T> std::ops::IndexMut<GridCoord> for OwnedGrid<'a, T> {
-    fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coord");
-        // }
-        unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
-    }
-}
-
-type BandRaw = (Vec<Vec<Pt>>, f64, f64);
+/// The raw result of the isoband computation,
+/// where the first element is a vector of paths,
+/// the second is the minimum value
+/// and the third is the maximum value.
+pub type BandRaw = (Vec<Vec<Pt>>, f64, f64);
 
 /// An isoband, described by its min and max value and MultiPolygon.
 #[derive(Debug)]
@@ -233,7 +76,7 @@ pub(crate) struct Cell {
     pub x1: f64,
     pub x2: f64,
     pub x3: f64,
-    pub edges: HashMap<EnterType, Edge>,
+    pub edges: FxHashMap<EnterType, Edge>,
     // pub polygons: Vec<Vec<Pt>>,
     // pub x: usize,
     // pub y: usize,
@@ -272,7 +115,17 @@ pub(crate) struct Settings {
 
 static PRECISION: f64 = 1e-4;
 
+/// Contours generator, using builder pattern, to
+/// be used on a rectangular `Slice` of values to
+/// get a `Vec` of [`Band`] (uses [`isobands`] function
+/// internally).
+///
+/// [`isobands`]: fn.isobands.html
 pub struct ContourBuilder {
+    /// The width of the grid
+    width: usize,
+    /// The height of the grid
+    height: usize,
     /// The horizontal coordinate for the origin of the grid.
     x_origin: f64,
     /// The vertical coordinate for the origin of the grid.
@@ -285,19 +138,22 @@ pub struct ContourBuilder {
     use_quad_tree: bool,
 }
 
-impl Default for ContourBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for ContourBuilder {
+//     fn default() -> Self {
+//         Self::new(0, 0)
+//     }
+// }
 
 impl ContourBuilder {
-    /// Constructs a new contours generator.
+    /// Constructs a new contours generator for a grid of size `width` x `height`.
     ///
     /// By default, `x_origin` and `y_origin` are set to `0.0`, `x_step` and `y_step` to `1.0`
     /// and `use_quad_tree` to `false`.
-    pub fn new() -> Self {
+    /// This can be changed using the corresponding methods.
+    pub fn new(width: usize, height: usize) -> Self {
         ContourBuilder {
+            width,
+            height,
             x_origin: 0f64,
             y_origin: 0f64,
             x_step: 1f64,
@@ -337,8 +193,14 @@ impl ContourBuilder {
     }
 
     /// Generates contours for the given data and thresholds.
-    pub fn contours(&self, data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<Band>> {
-        let bands = isobands(data, thresholds, self.use_quad_tree)?;
+    pub fn contours(&self, data: &[f64], thresholds: &[f64]) -> Result<Vec<Band>> {
+        let bands = isobands(
+            data,
+            thresholds,
+            self.use_quad_tree,
+            self.width,
+            self.height,
+        )?;
         // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
         if (self.x_origin, self.y_origin) != (0f64, 0f64)
             || (self.x_step, self.y_step) != (1f64, 1f64)
@@ -398,26 +260,34 @@ impl ContourBuilder {
     }
 }
 
+/// Generates contours for the given data and thresholds.
+/// Returns a `Vec` of [`BandRaw`] (this is the raw result
+/// of the marching squares algorithm,
+/// before converting the paths to geo_types geometries).
 pub fn isobands(
-    data: &[Vec<f64>],
+    data: &[f64],
     thresholds: &[f64],
     use_quad_tree: bool,
+    width: usize,
+    height: usize,
 ) -> Result<Vec<BandRaw>> {
-    if data.is_empty() {
+    if data.is_empty() || data.len() != width * height {
         return Err(new_error(ErrorKind::BadData));
     }
-    data.iter()
-        .map(|row| {
-            if row.is_empty() || row.len() != data[0].len() {
-                Err(new_error(ErrorKind::BadRowLength))?
-            }
-            Ok(())
-        })
-        .collect::<Result<Vec<()>>>()?;
+    // data.iter()
+    //     .map(|row| {
+    //         if row.is_empty() || row.len() != data[0].len() {
+    //             Err(new_error(ErrorKind::BadRowLength))?
+    //         }
+    //         Ok(())
+    //     })
+    //     .collect::<Result<Vec<()>>>()?;
+
     if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
 
+    let data = BorrowedGrid::new(data, width, height);
     if use_quad_tree {
         _isobands_quadtree_raw(data, thresholds)
     } else {
@@ -436,16 +306,13 @@ fn empty_cell_grid(li: usize, lj: usize) -> Vec<Vec<Option<Cell>>> {
     cell_grid
 }
 
-pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRaw>> {
-    let lj = data.len();
-    let li = data[0].len();
+fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
+    let lj = data.height();
+    let li = data.width();
     let n_pair_thresholds = thresholds.len() - 1;
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
-
-    // Convert input data to a 1d-vec based grid
-    let fvec: Grid<f64> = data.into();
 
     let res = thresholds
         .iter()
@@ -465,12 +332,12 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
             // Fill up the grid with cell information
             cell_grid.iter_mut().enumerate().try_for_each(|(i, row)| {
                 row.iter_mut().enumerate().try_for_each(|(j, cell)| {
-                    *cell = prepare_cell(i, j, &fvec, &opt)?;
+                    *cell = prepare_cell(i, j, &data, &opt)?;
                     Ok::<(), Error>(())
                 })
             })?;
 
-            let band_polygons = trace_band_paths(&fvec, &mut cell_grid, &opt)?;
+            let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
             Ok((band_polygons, min, max))
         })
@@ -479,16 +346,13 @@ pub fn _isobands_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRa
     Ok(res)
 }
 
-pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<Vec<BandRaw>> {
-    let lj = data.len();
-    let li = data[0].len();
+fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
+    let lj = data.height();
+    let li = data.width();
     let n_pair_thresholds = thresholds.len() - 1;
 
-    // Convert input data to a 1d-vec based grid
-    let fvec: Grid<f64> = data.into();
-
     // Instantiate the quadtree
-    let tree = QuadTree::new(&fvec);
+    let tree = QuadTree::new(&data);
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
@@ -518,13 +382,11 @@ pub fn _isobands_quadtree_raw(data: &[Vec<f64>], thresholds: &[f64]) -> Result<V
             }
 
             // Fill up the grid with cell information
-            for cell in tree.cells_in_band(opt.min_v, opt.max_v) {
-                let i = cell.0;
-                let j = cell.1;
-                cell_grid[i][j] = prepare_cell(i, j, &fvec, &opt)?;
+            for (i, j) in tree.cells_in_band(opt.min_v, opt.max_v) {
+                cell_grid[i][j] = prepare_cell(i, j, &data, &opt)?;
             }
 
-            let band_polygons = trace_band_paths(&fvec, &mut cell_grid, &opt)?;
+            let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
             Ok((band_polygons, min, max))
         })

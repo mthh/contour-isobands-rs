@@ -9,7 +9,7 @@ use test::{black_box, Bencher};
 fn bench_isobands_no_quadtree_pot_pop_fr(b: &mut Bencher) {
     let data_str = include_str!("../tests/fixtures/pot_pop_fr.json");
     let raw_data: serde_json::Value = serde_json::from_str(data_str).unwrap();
-    let raw_matrix: Vec<f64> = raw_data["data"]
+    let matrix: Vec<f64> = raw_data["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -18,14 +18,6 @@ fn bench_isobands_no_quadtree_pot_pop_fr(b: &mut Bencher) {
     let h = raw_data["height"].as_u64().unwrap() as usize;
     let w = raw_data["width"].as_u64().unwrap() as usize;
 
-    let mut matrix = Vec::new();
-    for i in 0..h {
-        let mut row = Vec::new();
-        for j in 0..w {
-            row.push(raw_matrix[i * w + j]);
-        }
-        matrix.push(row);
-    }
     b.iter(|| {
         black_box(
             isobands(
@@ -35,6 +27,8 @@ fn bench_isobands_no_quadtree_pot_pop_fr(b: &mut Bencher) {
                     5274162.5, 6328995., 7383827.5, 8438660., 9704459., 10548326.,
                 ],
                 false,
+                w,
+                h,
             )
             .unwrap(),
         )
@@ -45,7 +39,7 @@ fn bench_isobands_no_quadtree_pot_pop_fr(b: &mut Bencher) {
 fn bench_isobands_quadtree_pot_pop_fr(b: &mut Bencher) {
     let data_str = include_str!("../tests/fixtures/pot_pop_fr.json");
     let raw_data: serde_json::Value = serde_json::from_str(data_str).unwrap();
-    let raw_matrix: Vec<f64> = raw_data["data"]
+    let matrix: Vec<f64> = raw_data["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -54,14 +48,6 @@ fn bench_isobands_quadtree_pot_pop_fr(b: &mut Bencher) {
     let h = raw_data["height"].as_u64().unwrap() as usize;
     let w = raw_data["width"].as_u64().unwrap() as usize;
 
-    let mut matrix = Vec::new();
-    for i in 0..h {
-        let mut row = Vec::new();
-        for j in 0..w {
-            row.push(raw_matrix[i * w + j]);
-        }
-        matrix.push(row);
-    }
     b.iter(|| {
         black_box(
             isobands(
@@ -71,6 +57,8 @@ fn bench_isobands_quadtree_pot_pop_fr(b: &mut Bencher) {
                     5274162.5, 6328995., 7383827.5, 8438660., 9704459., 10548326.,
                 ],
                 true,
+                w,
+                h,
             )
             .unwrap(),
         )
@@ -81,7 +69,7 @@ fn bench_isobands_quadtree_pot_pop_fr(b: &mut Bencher) {
 fn bench_isobands_no_quadtree_volcano(b: &mut Bencher) {
     let data_str = include_str!("../tests/fixtures/volcano.json");
     let raw_data: serde_json::Value = serde_json::from_str(data_str).unwrap();
-    let raw_matrix: Vec<f64> = raw_data["data"]
+    let matrix: Vec<f64> = raw_data["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -90,14 +78,6 @@ fn bench_isobands_no_quadtree_volcano(b: &mut Bencher) {
     let h = raw_data["height"].as_u64().unwrap() as usize;
     let w = raw_data["width"].as_u64().unwrap() as usize;
 
-    let mut matrix = Vec::new();
-    for i in 0..h {
-        let mut row = Vec::new();
-        for j in 0..w {
-            row.push(raw_matrix[i * w + j]);
-        }
-        matrix.push(row);
-    }
     b.iter(|| {
         black_box(
             isobands(
@@ -107,6 +87,8 @@ fn bench_isobands_no_quadtree_volcano(b: &mut Bencher) {
                     155., 160., 165., 170., 175., 180., 185., 190., 195., 200.,
                 ],
                 false,
+                w,
+                h,
             )
             .unwrap(),
         )
@@ -117,7 +99,7 @@ fn bench_isobands_no_quadtree_volcano(b: &mut Bencher) {
 fn bench_isobands_quadtree_volcano(b: &mut Bencher) {
     let data_str = include_str!("../tests/fixtures/volcano.json");
     let raw_data: serde_json::Value = serde_json::from_str(data_str).unwrap();
-    let raw_matrix: Vec<f64> = raw_data["data"]
+    let matrix: Vec<f64> = raw_data["data"]
         .as_array()
         .unwrap()
         .iter()
@@ -126,14 +108,6 @@ fn bench_isobands_quadtree_volcano(b: &mut Bencher) {
     let h = raw_data["height"].as_u64().unwrap() as usize;
     let w = raw_data["width"].as_u64().unwrap() as usize;
 
-    let mut matrix = Vec::new();
-    for i in 0..h {
-        let mut row = Vec::new();
-        for j in 0..w {
-            row.push(raw_matrix[i * w + j]);
-        }
-        matrix.push(row);
-    }
     b.iter(|| {
         black_box(
             isobands(
@@ -143,6 +117,8 @@ fn bench_isobands_quadtree_volcano(b: &mut Bencher) {
                     155., 160., 165., 170., 175., 180., 185., 190., 195., 200.,
                 ],
                 true,
+                w,
+                h,
             )
             .unwrap(),
         )

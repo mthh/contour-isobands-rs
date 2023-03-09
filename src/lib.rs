@@ -1,57 +1,123 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
-//! Compute isobands and contour polygons by applying
-//! marching squares to a matrix of values.
+//! Compute isobands *(i.e. contour polygons which enclose
+//! all the points of a grid included between two chosen values)*
+//! by applying marching squares to an array of values.
 //!
-//! Output is a list of isobands, each isoband is a list of polygons.
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+//! Output is a Vec of [`Band`], each [`Band`] is characterized by its minimum value,
+//! its maximum value, and a [`MultiPolygon`] geometry.
+//! #### Example:
+#![cfg_attr(feature = "geojson", doc = "```")]
+#![cfg_attr(not(feature = "geojson"), doc = "```ignore")]
+//! # use contour_isobands::ContourBuilder;
+//! let c = ContourBuilder::new(10, 10); // x dim., y dim.
+//! let res = c.contours(&vec![
+//!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//!     0., 0., 0., 1., 1., 1., 0., 0., 0., 0.,
+//!     0., 0., 0., 1., 1., 1., 0., 0., 0., 0.,
+//!     0., 0., 0., 1., 1., 1., 0., 0., 0., 0.,
+//!     0., 0., 0., 1., 1., 1., 0., 0., 0., 0.,
+//!     0., 0., 0., 1., 1., 1., 0., 0., 0., 0.,
+//!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+//!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
+//! ], &[0.5, 1.]).unwrap(); // values, thresholds
+//!
+//! let output = serde_json::json!({
+//!   "type": "Feature",
+//!   "geometry": {
+//!     "type": "MultiPolygon",
+//!     "coordinates": [[[
+//!         [3.0, 2.5], [2.5, 3.0], [2.5, 4.0], [2.5, 5.0],
+//!         [2.5, 6.0], [2.5, 7.0], [3.0, 7.5], [4.0, 7.5],
+//!         [5.0, 7.5], [5.5, 7.0], [5.5, 6.0], [5.5, 5.0],
+//!         [5.5, 4.0], [5.5, 3.0], [5.0, 2.5], [4.0, 2.5],
+//!         [3.0, 2.5]
+//!     ]]]
+//!   },
+//!   "properties": {"min_v": 0.5, "max_v": 1.0}
+//! });
+//!
+//! assert_eq!(res[0].to_geojson(), std::convert::TryFrom::try_from(output).unwrap());
+//! ```
+//! [`MultiPolygon`]: ../geo_types/geometry/struct.MultiPolygon.html
+#![cfg_attr(debug_assertions, allow(dead_code))]
 mod area;
 mod errors;
+mod grid;
 mod isobands;
 mod polygons;
 mod quadtree;
 mod shape_coordinates;
 
-pub use crate::isobands::{isobands, Band, ContourBuilder};
+pub use crate::isobands::{isobands, Band, BandRaw, ContourBuilder};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::isobands::Pt;
 
+    fn make_grid_from2d_vec(data: &[Vec<f64>]) -> (Vec<f64>, usize, usize) {
+        let width = data[0].len();
+        let height = data.len();
+        let mut grid: Vec<f64> = Vec::with_capacity(width * height);
+        for row in data {
+            grid.extend_from_slice(row);
+        }
+        (grid, width, height)
+    }
+
     #[test]
     fn isobands_err_matrix_empty() {
         let matrix: Vec<Vec<f64>> = vec![vec![]];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
         let lower_band = 1.;
         let bandwidth = 2.;
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false);
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        );
         assert!(res.is_err());
     }
 
     #[test]
     fn isobands_err_threshold_too_short() {
         let matrix = vec![vec![1., 1.], vec![1., 5.]];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
-        let res = isobands(&matrix, &vec![2.], false);
+        let res = isobands(&matrix, &vec![2.], false, width, height);
         assert!(res.is_err());
     }
 
     #[test]
     fn isobands_err_matrix_rows_not_same_length() {
         let matrix: Vec<Vec<f64>> = vec![vec![1., 1.], vec![1., 5., 5.]];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
-        let res = isobands(&matrix, &vec![1., 3.], false);
+        let res = isobands(&matrix, &vec![1., 3.], false, width, height);
         assert!(res.is_err());
     }
 
     #[test]
     fn isobands_minimal() {
         let matrix = vec![vec![1., 1.], vec![1., 5.]];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
         let lower_band = 1.;
         let bandwidth = 2.;
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
         assert_eq!(
             res[0].0,
             vec![vec![
@@ -76,8 +142,16 @@ mod tests {
         ];
         let lower_band = 1.;
         let bandwidth = 1.;
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
         assert_eq!(
             res[0].0,
             vec![
@@ -120,11 +194,18 @@ mod tests {
             vec![18., 13., 10., 9., 10., 13., 18.],
             vec![18., 13., 10., 9., 10., 13., 18.],
         ];
-
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
         let lower_band = 4.5;
         let bandwidth = 4.5;
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
         assert_eq!(
             res[0].0,
             vec![
@@ -212,11 +293,19 @@ mod tests {
             vec![1., 5., 5., 5., 5., 5., 1.],
             vec![1., 1., 1., 1., 1., 1., 1.],
         ];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
         let lower_band = 3.;
         let bandwidth = 2.;
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
         assert_eq!(
             res[0].0,
             vec![
@@ -268,11 +357,19 @@ mod tests {
             vec![1., 5., 5., 5., 5., 5., 1.],
             vec![1., 1., 1., 1., 1., 1., 1.],
         ];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
         let lower_band = 5.;
         let bandwidth = 2.;
 
-        let res = isobands(&matrix, &vec![lower_band, lower_band + bandwidth], false).unwrap();
+        let res = isobands(
+            &matrix,
+            &vec![lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
         assert_eq!(
             res[0].0,
             vec![
@@ -324,10 +421,11 @@ mod tests {
             vec![1., 5., 5., 5., 5., 5., 1.],
             vec![1., 1., 1., 1., 1., 1., 1.],
         ];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
         let intervals = vec![3., 5., 7.];
 
-        let res = isobands(&matrix, &intervals, false).unwrap();
+        let res = isobands(&matrix, &intervals, false, width, height).unwrap();
 
         assert_eq!(res.len(), 2);
 
@@ -432,11 +530,26 @@ mod tests {
             vec![1., 5., 5., 1.],
             vec![0., 1., 1., 1.],
         ];
+        let (matrix, width, height) = make_grid_from2d_vec(&matrix);
         let lower_band = 1.;
         let bandwidth = 1.;
 
-        let res1 = isobands(&matrix, &[lower_band, lower_band + bandwidth], false).unwrap();
-        let res2 = isobands(&matrix, &[lower_band, lower_band + bandwidth], true).unwrap();
+        let res1 = isobands(
+            &matrix,
+            &[lower_band, lower_band + bandwidth],
+            false,
+            width,
+            height,
+        )
+        .unwrap();
+        let res2 = isobands(
+            &matrix,
+            &[lower_band, lower_band + bandwidth],
+            true,
+            width,
+            height,
+        )
+        .unwrap();
 
         assert_eq!(res1, res2);
     }
@@ -446,7 +559,7 @@ mod tests {
     fn isobands_volcano_same_with_quadtree() {
         let volcano_str = include_str!("../tests/fixtures/volcano.json");
         let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
-        let raw_matrix: Vec<f64> = raw_data["data"]
+        let matrix: Vec<f64> = raw_data["data"]
             .as_array()
             .unwrap()
             .iter()
@@ -454,20 +567,14 @@ mod tests {
             .collect();
         let h = raw_data["height"].as_u64().unwrap() as usize;
         let w = raw_data["width"].as_u64().unwrap() as usize;
-        let mut matrix = Vec::new();
-        for i in 0..h {
-            matrix.push(Vec::new());
-            for j in 0..w {
-                matrix[i].push(raw_matrix[i * 87 + j] as f64);
-            }
-        }
+
         let intervals = [
             90., 95., 100., 105., 110., 115., 120., 125., 130., 135., 140., 145., 150., 155., 160.,
             165., 170., 175., 180., 185., 190., 195., 200.,
         ];
 
-        let res1 = isobands(&matrix, &intervals, false).unwrap();
-        let res2 = isobands(&matrix, &intervals, true).unwrap();
+        let res1 = isobands(&matrix, &intervals, false, w, h).unwrap();
+        let res2 = isobands(&matrix, &intervals, true, w, h).unwrap();
 
         assert_eq!(res1, res2);
     }
@@ -477,7 +584,7 @@ mod tests {
     fn isobands_pot_pop_same_with_quadtree() {
         let volcano_str = include_str!("../tests/fixtures/pot_pop_fr.json");
         let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
-        let raw_matrix: Vec<f64> = raw_data["data"]
+        let matrix: Vec<f64> = raw_data["data"]
             .as_array()
             .unwrap()
             .iter()
@@ -485,20 +592,14 @@ mod tests {
             .collect();
         let h = raw_data["height"].as_u64().unwrap() as usize;
         let w = raw_data["width"].as_u64().unwrap() as usize;
-        let mut matrix = Vec::new();
-        for i in 0..h {
-            matrix.push(Vec::new());
-            for j in 0..w {
-                matrix[i].push(raw_matrix[i * 87 + j] as f64);
-            }
-        }
+
         let intervals = [
             0.001, 105483.25, 527416.25, 1054832.5, 2109665., 3164497.5, 4219330., 5274162.5,
             6328995., 7383827.5, 8438660., 9704459., 10548326.,
         ];
 
-        let res1 = isobands(&matrix, &intervals, false).unwrap();
-        let res2 = isobands(&matrix, &intervals, true).unwrap();
+        let res1 = isobands(&matrix, &intervals, false, w, h).unwrap();
+        let res2 = isobands(&matrix, &intervals, true, w, h).unwrap();
 
         assert_eq!(res1, res2);
     }

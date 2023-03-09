@@ -16,6 +16,7 @@ keywords = ["contour", "polygon", "isobands", "marching-squares", "geojson"]
 geojson = { version = ">=0.16, <=0.24", optional = true }
 geo-types= { version = "0.7" }
 serde_json = "^1.0"
+rustc-hash = "^1.1"
 
 [package.metadata.docs.rs]
 all-features = true

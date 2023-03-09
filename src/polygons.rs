@@ -1,7 +1,8 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::isobands::{Cell, EnterType, Grid, GridTrait, Pt, Settings};
+use crate::grid::{BorrowedGrid, GridTrait};
+use crate::isobands::{Cell, EnterType, Pt, Settings};
 
-fn require_frame(data: &Grid<f64>, lowerbound: f64, upperbound: f64) -> bool {
+fn require_frame(data: &BorrowedGrid<f64>, lowerbound: f64, upperbound: f64) -> bool {
     let mut frame_required: bool = true;
     // let rows = data.len();
     // let cols = data[0].len();
@@ -84,6 +85,7 @@ fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
     Pt(x as f64, y as f64)
 }
 
+#[inline]
 fn entry_dir(e: &EnterType) -> usize {
     match e {
         EnterType::RT | EnterType::RB => 0,
@@ -94,7 +96,7 @@ fn entry_dir(e: &EnterType) -> usize {
 }
 
 pub(crate) fn trace_band_paths(
-    data: &Grid<f64>,
+    data: &BorrowedGrid<f64>,
     cell_grid: &mut Vec<Vec<Option<Cell>>>,
     opt: &Settings,
 ) -> Result<Vec<Vec<Pt>>> {
