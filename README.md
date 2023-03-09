@@ -3,13 +3,6 @@
 Compute isobands *(i.e. contour polygons which enclose all the points of a grid included
 between two given values)* by applying marching squares to an array of values.
 
-### Difference with [`mthh/contour-rs`](https://github.com/mthh/contour-rs)
-While [`mthh/contour-rs`](https://github.com/mthh/contour-rs) computes isolines
-(cf. [wikipedia:Marching_squares#Disambiguation_of_saddle_points](https://en.wikipedia.org/wiki/Marching_squares#Disambiguation_of_saddle_points)) and
-their corresponding polygons *(i.e. polygons that contain all points above the threshold defined for a given isoline)*,
-`contour-isobands-rs` computes isobands (cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands)) and their
-corresponding polygons *(i.e. contour polygons that contain all points between a minimum and a maximum bound)*.
-
 ![](illustration.png)
 
 ### Usage
@@ -38,6 +31,15 @@ let result: Vec<Band> = ContourBuilder::new(7, 6)
 
 assert_eq!(result.len(), 3);
 ```
+
+### Difference with [`mthh/contour-rs`](https://github.com/mthh/contour-rs)
+
+While [`mthh/contour-rs`](https://github.com/mthh/contour-rs) computes isolines
+(cf. [wikipedia:Marching_squares#Disambiguation_of_saddle_points](https://en.wikipedia.org/wiki/Marching_squares#Disambiguation_of_saddle_points)) and
+their corresponding polygons *(i.e. polygons that contain all points above the threshold defined for a given isoline)*,
+`contour-isobands-rs` computes isobands (cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands)) and their
+corresponding polygons *(i.e. contour polygons that contain all points between a minimum and a maximum bound)*.
+
 
 ### Status
 
