@@ -1574,8 +1574,7 @@ pub(crate) fn prepare_cell(
         x1,
         x2,
         x3,
-        edges: FxHashMap::default()
-        // polygons: Vec::new(),
+        edges: FxHashMap::default(),
     };
 
     //println!("cval: {}", cval);

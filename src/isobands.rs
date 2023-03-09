@@ -77,7 +77,6 @@ pub(crate) struct Cell {
     pub x2: f64,
     pub x3: f64,
     pub edges: FxHashMap<EnterType, Edge>,
-    // pub polygons: Vec<Vec<Pt>>,
     // pub x: usize,
     // pub y: usize,
 }
