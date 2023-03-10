@@ -2,6 +2,10 @@ use crate::errors::{new_error, ErrorKind, Result};
 use crate::grid::{BorrowedGrid, GridTrait};
 use crate::isobands::{Cell, Edge, EnterType, MoveInfo, Pt, Settings};
 use rustc_hash::FxHashMap;
+// use lazy_static::lazy_static;
+// use rustc_hash::FxHasher;
+// use std::collections::HashMap;
+// use std::hash::BuildHasherDefault;
 
 fn interpolate_linear_ab(a: f64, b: f64, v0: f64, v1: f64) -> f64 {
     let (v0, v1) = if v0 > v1 { (v1, v0) } else { (v0, v1) };
@@ -1577,7 +1581,9 @@ pub(crate) fn prepare_cell(
         edges: FxHashMap::default(),
     };
 
-    //println!("cval: {}", cval);
+    // I tried storing the functions in a hashmap (FxHashMap) and in a Vec
+    // but none of them were faster than the match statement
+    // (which I decided to keep for now for readability).
     match cell.cval {
         0 | 170 => {} /* 0000 or 2222 */
         85 => {
@@ -1995,6 +2001,22 @@ pub(crate) fn prepare_cell(
         }
         _ => return Err(new_error(ErrorKind::UnexpectedCVAL)),
     };
+    // Use a map instead of a match
+    // if let Some(fn_case) = CVAL_MAP.get(&cval) {
+    //     fn_case(&mut cell, opt);
+    // } else {
+    //     return Err(new_error(ErrorKind::UnexpectedCVAL));
+    // }
+    // Use a Vec instead of a map
+    // if let Some(bucket_content) = CVAL_MAP.get(cval) {
+    //     if let Some(fn_case) = bucket_content {
+    //         fn_case(&mut cell, opt);
+    //     } else {
+    //         return Err(new_error(ErrorKind::UnexpectedCVAL));
+    //     }
+    // } else {
+    //     return Err(new_error(ErrorKind::UnexpectedCVAL));
+    // }
 
     Ok(Some(cell))
 }
@@ -2010,3 +2032,361 @@ mod test {
         assert_eq!(compute_center_average(1., 1., 0., 0., 0., 1.), 1);
     }
 }
+
+// Below are attempts to use a map or a vec instead of a match
+// in the prepare_cell function.
+
+// fn no_op(_cell: &mut Cell, _opt: &Settings) {
+// }
+//
+// fn case17(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_bl(cell, opt);
+//         triangle_tr(cell, opt);
+//     } else {
+//         hexagon_lt_rb(cell, opt);
+//     }
+// }
+//
+// fn case68(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_tl(cell, opt);
+//         triangle_br(cell, opt);
+//     } else {
+//         hexagon_bl_tr(cell, opt);
+//     }
+// }
+//
+// fn case153(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_bl(cell, opt);
+//         triangle_tr(cell, opt);
+//     } else {
+//         hexagon_lt_rb(cell, opt);
+//     }
+// }
+//
+// fn case102(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_tl(cell, opt);
+//         triangle_br(cell, opt);
+//     } else {
+//         hexagon_bl_tr(cell, opt);
+//     }
+// }
+//
+// fn case152(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_tr(cell, opt);
+//         tetragon_bl(cell, opt);
+//     } else {
+//         heptagon_tr(cell, opt);
+//     }
+// }
+//
+// fn case137(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_bl(cell, opt);
+//         tetragon_tr(cell, opt);
+//     } else {
+//         heptagon_bl(cell, opt);
+//     }
+// }
+//
+// fn case98(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_tl(cell, opt);
+//         tetragon_br(cell, opt);
+//     } else {
+//         heptagon_tl(cell, opt);
+//     }
+// }
+//
+// fn case38(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 0 */
+//     if center_avg == 2 {
+//         triangle_br(cell, opt);
+//         tetragon_tl(cell, opt);
+//     } else {
+//         heptagon_br(cell, opt);
+//     }
+// }
+//
+// fn case18(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_tr(cell, opt);
+//         tetragon_bl(cell, opt);
+//     } else {
+//         heptagon_tr(cell, opt);
+//     }
+// }
+//
+// fn case33(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_bl(cell, opt);
+//         tetragon_tr(cell, opt);
+//     } else {
+//         heptagon_bl(cell, opt);
+//     }
+// }
+//
+// fn case72(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_tl(cell, opt);
+//         tetragon_br(cell, opt);
+//     } else {
+//         heptagon_tl(cell, opt);
+//     }
+// }
+//
+// fn case132(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//     /* should never be center_avg === 2 */
+//     if center_avg == 0 {
+//         triangle_br(cell, opt);
+//         tetragon_tl(cell, opt);
+//     } else {
+//         heptagon_br(cell, opt);
+//     }
+// }
+//
+// fn case136(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//
+//     if center_avg == 0 {
+//         tetragon_tl(cell, opt);
+//         tetragon_br(cell, opt);
+//     } else if center_avg == 1 {
+//         octagon(cell, opt);
+//     } else {
+//         tetragon_bl(cell, opt);
+//         tetragon_tr(cell, opt);
+//     }
+// }
+//
+// fn case34(cell: &mut Cell, opt: &Settings) {
+//     let center_avg =
+//         compute_center_average(cell.x0, cell.x1, cell.x2, cell.x3, opt.min_v, opt.max_v);
+//
+//     if center_avg == 0 {
+//         tetragon_bl(cell, opt);
+//         tetragon_tr(cell, opt);
+//     } else if center_avg == 1 {
+//         octagon(cell, opt);
+//     } else {
+//         tetragon_tl(cell, opt);
+//         tetragon_br(cell, opt);
+//     }
+// }
+//
+// lazy_static! {
+//     static ref CVAL_MAP: Vec<Option<fn(&mut Cell, &Settings)>> = {
+//         let mut m = Vec::with_capacity(171);
+//         for i in 0..171 {
+//             m.push(None);
+//         }
+//         m[0] = Some(no_op as fn(&mut Cell, &Settings));
+//         m[170] = Some(no_op as fn(&mut Cell, &Settings));
+//         m[85] = Some(square as fn(&mut Cell, &Settings));
+//         m[169] = Some(triangle_bl as fn(&mut Cell, &Settings));
+//         m[166] = Some(triangle_br as fn(&mut Cell, &Settings));
+//         m[154] = Some(triangle_tr as fn(&mut Cell, &Settings));
+//         m[106] = Some(triangle_tl as fn(&mut Cell, &Settings));
+//         m[1] = Some(triangle_bl as fn(&mut Cell, &Settings));
+//         m[4] = Some(triangle_br as fn(&mut Cell, &Settings));
+//         m[16] = Some(triangle_tr as fn(&mut Cell, &Settings));
+//         m[64] = Some(triangle_tl as fn(&mut Cell, &Settings));
+//         m[168] = Some(tetragon_bl as fn(&mut Cell, &Settings));
+//         m[162] = Some(tetragon_br as fn(&mut Cell, &Settings));
+//         m[138] = Some(tetragon_tr as fn(&mut Cell, &Settings));
+//         m[42] = Some(tetragon_tl as fn(&mut Cell, &Settings));
+//         m[2] = Some(tetragon_bl as fn(&mut Cell, &Settings));
+//         m[8] = Some(tetragon_br as fn(&mut Cell, &Settings));
+//         m[32] = Some(tetragon_tr as fn(&mut Cell, &Settings));
+//         m[128] = Some(tetragon_tl as fn(&mut Cell, &Settings));
+//         m[5] = Some(tetragon_b as fn(&mut Cell, &Settings));
+//         m[20] = Some(tetragon_r as fn(&mut Cell, &Settings));
+//         m[80] = Some(tetragon_t as fn(&mut Cell, &Settings));
+//         m[65] = Some(tetragon_l as fn(&mut Cell, &Settings));
+//         m[165] = Some(tetragon_b as fn(&mut Cell, &Settings));
+//         m[150] = Some(tetragon_r as fn(&mut Cell, &Settings));
+//         m[90] = Some(tetragon_t as fn(&mut Cell, &Settings));
+//         m[105] = Some(tetragon_l as fn(&mut Cell, &Settings));
+//         m[160] = Some(tetragon_lr as fn(&mut Cell, &Settings));
+//         m[130] = Some(tetragon_tb as fn(&mut Cell, &Settings));
+//         m[10] = Some(tetragon_lr as fn(&mut Cell, &Settings));
+//         m[40] = Some(tetragon_tb as fn(&mut Cell, &Settings));
+//         m[101] = Some(pentagon_tr as fn(&mut Cell, &Settings));
+//         m[149] = Some(pentagon_tl as fn(&mut Cell, &Settings));
+//         m[86] = Some(pentagon_bl as fn(&mut Cell, &Settings));
+//         m[89] = Some(pentagon_br as fn(&mut Cell, &Settings));
+//         m[69] = Some(pentagon_tr as fn(&mut Cell, &Settings));
+//         m[21] = Some(pentagon_tl as fn(&mut Cell, &Settings));
+//         m[84] = Some(pentagon_bl as fn(&mut Cell, &Settings));
+//         m[81] = Some(pentagon_br as fn(&mut Cell, &Settings));
+//         m[96] = Some(pentagon_tr_rl as fn(&mut Cell, &Settings));
+//         m[24] = Some(pentagon_rb_bt as fn(&mut Cell, &Settings));
+//         m[6] = Some(pentagon_bl_lr as fn(&mut Cell, &Settings));
+//         m[129] = Some(pentagon_lt_tb as fn(&mut Cell, &Settings));
+//         m[74] = Some(pentagon_tr_rl as fn(&mut Cell, &Settings));
+//         m[146] = Some(pentagon_rb_bt as fn(&mut Cell, &Settings));
+//         m[164] = Some(pentagon_bl_lr as fn(&mut Cell, &Settings));
+//         m[41] = Some(pentagon_lt_tb as fn(&mut Cell, &Settings));
+//         m[66] = Some(pentagon_bl_tb as fn(&mut Cell, &Settings));
+//         m[144] = Some(pentagon_lt_rl as fn(&mut Cell, &Settings));
+//         m[36] = Some(pentagon_tr_bt as fn(&mut Cell, &Settings));
+//         m[9] = Some(pentagon_rb_lr as fn(&mut Cell, &Settings));
+//         m[104] = Some(pentagon_bl_tb as fn(&mut Cell, &Settings));
+//         m[26] = Some(pentagon_lt_rl as fn(&mut Cell, &Settings));
+//         m[134] = Some(pentagon_tr_bt as fn(&mut Cell, &Settings));
+//         m[161] = Some(pentagon_rb_lr as fn(&mut Cell, &Settings));
+//         m[37] = Some(hexagon_lt_tr as fn(&mut Cell, &Settings));
+//         m[148] = Some(hexagon_bl_lt as fn(&mut Cell, &Settings));
+//         m[82] = Some(hexagon_bl_rb as fn(&mut Cell, &Settings));
+//         m[73] = Some(hexagon_tr_rb as fn(&mut Cell, &Settings));
+//         m[133] = Some(hexagon_lt_tr as fn(&mut Cell, &Settings));
+//         m[22] = Some(hexagon_bl_lt as fn(&mut Cell, &Settings));
+//         m[88] = Some(hexagon_bl_rb as fn(&mut Cell, &Settings));
+//         m[97] = Some(hexagon_tr_rb as fn(&mut Cell, &Settings));
+//         m[145] = Some(hexagon_lt_rb as fn(&mut Cell, &Settings));
+//         m[25] = Some(hexagon_lt_rb as fn(&mut Cell, &Settings));
+//         m[70] = Some(hexagon_bl_tr as fn(&mut Cell, &Settings));
+//         m[100] = Some(hexagon_bl_tr as fn(&mut Cell, &Settings));
+//         m[17] = Some(case17 as fn(&mut Cell, &Settings));
+//         m[68] = Some(case68 as fn(&mut Cell, &Settings));
+//         m[153] = Some(case153 as fn(&mut Cell, &Settings));
+//         m[102] = Some(case102 as fn(&mut Cell, &Settings));
+//         m[152] = Some(case152 as fn(&mut Cell, &Settings));
+//         m[137] = Some(case137 as fn(&mut Cell, &Settings));
+//         m[98] = Some(case98 as fn(&mut Cell, &Settings));
+//         m[38] = Some(case38 as fn(&mut Cell, &Settings));
+//         m[18] = Some(case18 as fn(&mut Cell, &Settings));
+//         m[33] = Some(case33 as fn(&mut Cell, &Settings));
+//         m[72] = Some(case72 as fn(&mut Cell, &Settings));
+//         m[132] = Some(case132 as fn(&mut Cell, &Settings));
+//         m[136] = Some(case136 as fn(&mut Cell, &Settings));
+//         m[34] = Some(case34 as fn(&mut Cell, &Settings));
+//         m
+//     };
+// }
+// lazy_static! {
+//     static ref CVAL_MAP: HashMap<usize, fn(&mut Cell, &Settings), BuildHasherDefault<FxHasher>> = {
+//         let mut m = FxHashMap::default();
+//         m.insert(0, no_op as fn(&mut Cell, &Settings));
+//         m.insert(170, no_op as fn(&mut Cell, &Settings));
+//         m.insert(85, square as fn(&mut Cell, &Settings));
+//         m.insert(169, triangle_bl as fn(&mut Cell, &Settings));
+//         m.insert(166, triangle_br as fn(&mut Cell, &Settings));
+//         m.insert(154, triangle_tr as fn(&mut Cell, &Settings));
+//         m.insert(106, triangle_tl as fn(&mut Cell, &Settings));
+//         m.insert(1, triangle_bl as fn(&mut Cell, &Settings));
+//         m.insert(4, triangle_br as fn(&mut Cell, &Settings));
+//         m.insert(16, triangle_tr as fn(&mut Cell, &Settings));
+//         m.insert(64, triangle_tl as fn(&mut Cell, &Settings));
+//         m.insert(168, tetragon_bl as fn(&mut Cell, &Settings));
+//         m.insert(162, tetragon_br as fn(&mut Cell, &Settings));
+//         m.insert(138, tetragon_tr as fn(&mut Cell, &Settings));
+//         m.insert(42, tetragon_tl as fn(&mut Cell, &Settings));
+//         m.insert(2, tetragon_bl as fn(&mut Cell, &Settings));
+//         m.insert(8, tetragon_br as fn(&mut Cell, &Settings));
+//         m.insert(32, tetragon_tr as fn(&mut Cell, &Settings));
+//         m.insert(128, tetragon_tl as fn(&mut Cell, &Settings));
+//         m.insert(5, tetragon_b as fn(&mut Cell, &Settings));
+//         m.insert(20, tetragon_r as fn(&mut Cell, &Settings));
+//         m.insert(80, tetragon_t as fn(&mut Cell, &Settings));
+//         m.insert(65, tetragon_l as fn(&mut Cell, &Settings));
+//         m.insert(165, tetragon_b as fn(&mut Cell, &Settings));
+//         m.insert(150, tetragon_r as fn(&mut Cell, &Settings));
+//         m.insert(90, tetragon_t as fn(&mut Cell, &Settings));
+//         m.insert(105, tetragon_l as fn(&mut Cell, &Settings));
+//         m.insert(160, tetragon_lr as fn(&mut Cell, &Settings));
+//         m.insert(130, tetragon_tb as fn(&mut Cell, &Settings));
+//         m.insert(10, tetragon_lr as fn(&mut Cell, &Settings));
+//         m.insert(40, tetragon_tb as fn(&mut Cell, &Settings));
+//         m.insert(101, pentagon_tr as fn(&mut Cell, &Settings));
+//         m.insert(149, pentagon_tl as fn(&mut Cell, &Settings));
+//         m.insert(86, pentagon_bl as fn(&mut Cell, &Settings));
+//         m.insert(89, pentagon_br as fn(&mut Cell, &Settings));
+//         m.insert(69, pentagon_tr as fn(&mut Cell, &Settings));
+//         m.insert(21, pentagon_tl as fn(&mut Cell, &Settings));
+//         m.insert(84, pentagon_bl as fn(&mut Cell, &Settings));
+//         m.insert(81, pentagon_br as fn(&mut Cell, &Settings));
+//         m.insert(96, pentagon_tr_rl as fn(&mut Cell, &Settings));
+//         m.insert(24, pentagon_rb_bt as fn(&mut Cell, &Settings));
+//         m.insert(6, pentagon_bl_lr as fn(&mut Cell, &Settings));
+//         m.insert(129, pentagon_lt_tb as fn(&mut Cell, &Settings));
+//         m.insert(74, pentagon_tr_rl as fn(&mut Cell, &Settings));
+//         m.insert(146, pentagon_rb_bt as fn(&mut Cell, &Settings));
+//         m.insert(164, pentagon_bl_lr as fn(&mut Cell, &Settings));
+//         m.insert(41, pentagon_lt_tb as fn(&mut Cell, &Settings));
+//         m.insert(66, pentagon_bl_tb as fn(&mut Cell, &Settings));
+//         m.insert(144, pentagon_lt_rl as fn(&mut Cell, &Settings));
+//         m.insert(36, pentagon_tr_bt as fn(&mut Cell, &Settings));
+//         m.insert(9, pentagon_rb_lr as fn(&mut Cell, &Settings));
+//         m.insert(104, pentagon_bl_tb as fn(&mut Cell, &Settings));
+//         m.insert(26, pentagon_lt_rl as fn(&mut Cell, &Settings));
+//         m.insert(134, pentagon_tr_bt as fn(&mut Cell, &Settings));
+//         m.insert(161, pentagon_rb_lr as fn(&mut Cell, &Settings));
+//         m.insert(37, hexagon_lt_tr as fn(&mut Cell, &Settings));
+//         m.insert(148, hexagon_bl_lt as fn(&mut Cell, &Settings));
+//         m.insert(82, hexagon_bl_rb as fn(&mut Cell, &Settings));
+//         m.insert(73, hexagon_tr_rb as fn(&mut Cell, &Settings));
+//         m.insert(133, hexagon_lt_tr as fn(&mut Cell, &Settings));
+//         m.insert(22, hexagon_bl_lt as fn(&mut Cell, &Settings));
+//         m.insert(88, hexagon_bl_rb as fn(&mut Cell, &Settings));
+//         m.insert(97, hexagon_tr_rb as fn(&mut Cell, &Settings));
+//         m.insert(145, hexagon_lt_rb as fn(&mut Cell, &Settings));
+//         m.insert(25, hexagon_lt_rb as fn(&mut Cell, &Settings));
+//         m.insert(70, hexagon_bl_tr as fn(&mut Cell, &Settings));
+//         m.insert(100, hexagon_bl_tr as fn(&mut Cell, &Settings));
+//         m.insert(17, case17 as fn(&mut Cell, &Settings));
+//         m.insert(68, case68 as fn(&mut Cell, &Settings));
+//         m.insert(153, case153 as fn(&mut Cell, &Settings));
+//         m.insert(102, case102 as fn(&mut Cell, &Settings));
+//         m.insert(152, case152 as fn(&mut Cell, &Settings));
+//         m.insert(137, case137 as fn(&mut Cell, &Settings));
+//         m.insert(98, case98 as fn(&mut Cell, &Settings));
+//         m.insert(38, case38 as fn(&mut Cell, &Settings));
+//         m.insert(18, case18 as fn(&mut Cell, &Settings));
+//         m.insert(33, case33 as fn(&mut Cell, &Settings));
+//         m.insert(72, case72 as fn(&mut Cell, &Settings));
+//         m.insert(132, case132 as fn(&mut Cell, &Settings));
+//         m.insert(136, case136 as fn(&mut Cell, &Settings));
+//         m.insert(34, case34 as fn(&mut Cell, &Settings));
+//         m
+//     };
+// }

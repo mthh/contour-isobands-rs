@@ -27,9 +27,8 @@ impl<T> Grid<T> {
     }
 
     pub fn new_from_vec(vec: Vec<T>, width: usize, height: usize) -> Self {
-        if vec.len() != width * height {
-            panic!("Invalid grid dimensions");
-        }
+        // We are only using it internally
+        // and we already checked that the array was of size width * height.
         Self {
             array: vec,
             width,
@@ -39,6 +38,22 @@ impl<T> Grid<T> {
 
     pub fn iter_rows(&self) -> impl Iterator<Item = &[T]> {
         self.array.chunks(self.width)
+    }
+
+    /// Iterate over all elements in the grid, returning the element and its
+    /// coordinates on the width and height axis.
+    pub fn iter(&self) -> impl Iterator<Item = (&T, usize, usize)> {
+        self.array
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (v, i % self.width, i / self.width))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&mut T, usize, usize)> {
+        self.array
+            .iter_mut()
+            .enumerate()
+            .map(|(i, v)| (v, i % self.width, i / self.width))
     }
 }
 
@@ -68,18 +83,12 @@ impl<T> std::ops::Index<GridCoord> for Grid<T> {
     type Output = T;
 
     fn index(&self, p: GridCoord) -> &Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coordinate");
-        // }
         unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
     }
 }
 
 impl<T> std::ops::IndexMut<GridCoord> for Grid<T> {
     fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coordinate");
-        // }
         unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
     }
 }
@@ -107,9 +116,8 @@ pub(crate) struct BorrowedGrid<'a, T> {
 
 impl<'a, T> BorrowedGrid<'a, T> {
     pub fn new(array: &'a [T], width: usize, height: usize) -> Self {
-        if array.len() != width * height {
-            panic!("Invalid grid dimensions");
-        }
+        // We are only using it internally
+        // and we already checked that the array was of size width * height.
         Self {
             array,
             width,
@@ -148,18 +156,12 @@ impl<'a, T> std::ops::Index<GridCoord> for BorrowedGrid<'a, T> {
     type Output = T;
 
     fn index(&self, p: GridCoord) -> &Self::Output {
-        // if !self.has(&p) {
-        //     panic!("Invalid grid coord");
-        // }
         unsafe { self.array.get_unchecked(p.1 * self.width + p.0) }
     }
 }
 
 // impl<'a, T> std::ops::IndexMut<GridCoord> for BorrowedGrid<'a, T> {
 //     fn index_mut(&mut self, p: GridCoord) -> &mut Self::Output {
-//         // if !self.has(&p) {
-//         //     panic!("Invalid grid coord");
-//         // }
 //         unsafe { self.array.get_unchecked_mut(p.1 * self.width + p.0) }
 //     }
 // }

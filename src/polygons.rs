@@ -139,8 +139,10 @@ pub(crate) fn trace_band_paths(
 
     for i in 0..cell_grid.len() {
         for j in 0..cell_grid[i].len() {
+            if cell_grid[i][j].is_none() || cell_grid[i][j].as_ref().unwrap().edges.is_empty() {
+                continue;
+            }
             for nextedge in &available_starts {
-                // println!("nextedge: {:?}", nextedge);
                 if let Some(cg) = &cell_grid[i][j] {
                     if let Some(edge) = cg.edges.get(nextedge) {
                         let mut path = Vec::new();
@@ -219,10 +221,9 @@ pub(crate) fn trace_band_paths(
                                 }
 
                                 loop {
-                                    // println!("loop - dir = {}", dir);
                                     let mut found_entry = false;
                                     if count > 4 {
-                                        println!("Direction change counter overflow! This should never happen!");
+                                        // println!("Direction change counter overflow! This should never happen!");
                                         break;
                                     }
 

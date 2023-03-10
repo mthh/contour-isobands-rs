@@ -32,13 +32,10 @@ impl Error {
 pub enum ErrorKind {
     BadDimension,
     JsonError(serde_json::error::Error),
-    Unexpected,
-    UnknownEnterType,
     UnexpectedCVAL,
     UnexpectedOutOfGridMove,
     OutOfBounds,
     BadIntervals,
-    BadRowLength,
     BadData,
 }
 
@@ -65,14 +62,11 @@ impl fmt::Display for Error {
                 f,
                 "The length of provided values doesn't match the (dx, dy) dimensions of the grid"
             ),
-            ErrorKind::Unexpected => write!(f, "Unexpected error while computing contours"),
             ErrorKind::UnexpectedCVAL => write!(f, "Unexpected cval"),
-            ErrorKind::UnknownEnterType => write!(f, "Unknown enter type"),
             ErrorKind::OutOfBounds => write!(f, "Out of bounds"),
             ErrorKind::UnexpectedOutOfGridMove => write!(f, "Unexpected out of grid move"),
-            ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lowerbound and the upperbound of the band to compute)"),
-            ErrorKind::BadRowLength => write!(f, "All rows must have the same length"),
-            ErrorKind::BadData => write!(f, "Data must have at least one row"),
+            ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lower-bound and the upper-bound of the band to compute)"),
+            ErrorKind::BadData => write!(f, "Data must have at least some values"),
         }
     }
 }

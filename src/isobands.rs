@@ -7,14 +7,10 @@ use crate::shape_coordinates::prepare_cell;
 use geo_types::{MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
+/// A point, as a tuple, where the first element is the x coordinate
+/// and the second is the y coordinate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pt(pub f64, pub f64);
-
-// impl From<Pt> for Coord<f64> {
-//     fn from(pt: Pt) -> Self {
-//         Coord { x: pt.0, y: pt.1 }
-//     }
-// }
 
 /// The raw result of the isoband computation,
 /// where the first element is a vector of paths,
@@ -136,12 +132,6 @@ pub struct ContourBuilder {
     /// Whether to use a quadtree
     use_quad_tree: bool,
 }
-
-// impl Default for ContourBuilder {
-//     fn default() -> Self {
-//         Self::new(0, 0)
-//     }
-// }
 
 impl ContourBuilder {
     /// Constructs a new contours generator for a grid of size `width` x `height`.
@@ -270,18 +260,12 @@ pub fn isobands(
     width: usize,
     height: usize,
 ) -> Result<Vec<BandRaw>> {
-    if data.is_empty() || data.len() != width * height {
+    if data.is_empty() {
         return Err(new_error(ErrorKind::BadData));
     }
-    // data.iter()
-    //     .map(|row| {
-    //         if row.is_empty() || row.len() != data[0].len() {
-    //             Err(new_error(ErrorKind::BadRowLength))?
-    //         }
-    //         Ok(())
-    //     })
-    //     .collect::<Result<Vec<()>>>()?;
-
+    if data.len() != width * height {
+        return Err(new_error(ErrorKind::BadDimension));
+    }
     if thresholds.len() < 2 {
         return Err(new_error(ErrorKind::BadIntervals));
     }
@@ -305,6 +289,14 @@ fn empty_cell_grid(li: usize, lj: usize) -> Vec<Vec<Option<Cell>>> {
     cell_grid
 }
 
+// fn empty_cell_grid2(li: usize, lj: usize) -> Grid<Option<Cell>> {
+//     let mut cell_grid: Vec<Option<Cell>> = Vec::with_capacity((li - 1) * (lj - 1));
+//     for i in 0..(li - 1) * (lj - 1) {
+//         cell_grid.push(None);
+//     }
+//     Grid::new_from_vec(cell_grid, li - 1, lj - 1)
+// }
+
 fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
     let lj = data.height();
     let li = data.width();
@@ -312,6 +304,7 @@ fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<Band
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
+    // let mut cell_grid2: Grid<Option<Cell>> = empty_cell_grid2(li, lj);
 
     let res = thresholds
         .iter()
@@ -335,6 +328,10 @@ fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<Band
                     Ok::<(), Error>(())
                 })
             })?;
+            // cell_grid2.iter_mut().try_for_each(|(cell, j, i)| {
+            //     *cell = prepare_cell(j, i, &data, &opt)?;
+            //     Ok::<(), Error>(())
+            // })?;
 
             let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
             // display_debug_info(&band_polygons);
@@ -355,6 +352,7 @@ fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
+    // let mut cell_grid2: Grid<Option<Cell>> = empty_cell_grid2(li, lj);
 
     let res = thresholds
         .iter()
@@ -379,10 +377,16 @@ fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result
                     })
                 });
             }
+            // if i > 0 {
+            //     cell_grid2.iter_mut().for_each(|(cell, _, _)| {
+            //         *cell = None;
+            //     });
+            // }
 
             // Fill up the grid with cell information
             for (i, j) in tree.cells_in_band(opt.min_v, opt.max_v) {
                 cell_grid[i][j] = prepare_cell(i, j, &data, &opt)?;
+                // cell_grid2[(i, j)] = prepare_cell(i, j, &data, &opt)?;
             }
 
             let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
