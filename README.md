@@ -1,5 +1,8 @@
 # Contour-isobands-rs
 
+[![Build status GitHub Actions](https://github.com/mthh/contour-isobands-rs/actions/workflows/build_test_ubuntu.yml/badge.svg)](https://github.com/mthh/contour-isobands-rs/actions/workflows/build_test_ubuntu.yml)
+[![Docs.rs version](https://docs.rs/contour-isobands/badge.svg)](https://docs.rs/contour-isobands/)
+
 Compute isobands *(i.e. contour polygons which enclose all the points of a grid included
 between two given values)* by applying marching squares to an array of values.
 
@@ -75,31 +78,30 @@ let geojson_string = GeoJson::from(
     }).to_string();
 ```
 
-### Difference with [`mthh/contour-rs`](https://github.com/mthh/contour-rs)
+Note that you can specify the coordinates of the grid and the distance between points (on x- and y-axis)
+using the `x_origin`, `y_origin`, `x_step` and `y_step` parameters of the `ContourBuilder` constructor :
 
-While [`mthh/contour-rs`](https://github.com/mthh/contour-rs) computes isolines
-(cf. [wikipedia:Marching_squares#Disambiguation_of_saddle_points](https://en.wikipedia.org/wiki/Marching_squares#Disambiguation_of_saddle_points)) and
+```rust
+let result: Vec<Band> = ContourBuilder::new(7, 6)
+    .x_origin(-6.141583932015321)
+    .y_origin(51.7591540368963)
+    .x_step(-0.119)
+    .y_step(0.09)
+    .use_quadtree(true)
+    .contours(&values, &intervals)?;
+```
+
+### Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
+
+While the [contour](https://crates.io/crates/contour) crate computes *__isolines__*
+(cf. [wikipedia:Marching_squares](https://en.wikipedia.org/wiki/Marching_squares)) and
 their corresponding polygons *(i.e. polygons that contain all points above the threshold defined for a given isoline)*,
-`contour-isobands-rs` computes isobands (cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands)) and their
+`contour-isobands-rs` computes *__isobands__* (cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands)) and their
 corresponding polygons *(i.e. contour polygons that contain all points between a minimum and a maximum bound)*.
 
-
-### Status
-
-This library is still WIP, but it should be published on crates.io soon.
-
-Current status / roadmap is as follows:
-
-- [x] All the isobands code (from [RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js)) is ported and tests are passing
-- [x] Implement a spatial index to filter calls to `prepare_cell` (although it only yields improved performance for large grids / when using numerous thresholds)
-- [x] Return contours using geo_types primitives and propose GeoJSON serialisation
-- [x] API is polished enough (and close to contour-rs API)
-- [ ] Rename [`contour-rs`](https://github.com/mthh/contour-rs)  to `contour-isolines-rs` to distinguish it from this library (`contour-isobands-rs`) ?
-- [ ] Publish on crates.io
-- [ ] Make a WASM library of it (WIP - https://github.com/mthh/contour-isobands-wasm)
-- [ ] Make a WASM example (WIP - https://github.com/mthh/contour-isobands-wasm)
+Depending on the desired use of the result, this `contour-isobands` crate may be more suitable than the `contour` crate (for example to visualize results with an opacity lower than 100%).
 
 ### Licence
 
-Since this is a port from [https://github.com/RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js) which is licenced under the Affero General Public License v3.0, this project is also licenced under the Affero General Public License v3.0.
+Since this is mostly a port of [https://github.com/RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js) which is licenced under the Affero General Public License v3.0, this project is also licenced under the Affero General Public License v3.0.
 See the [LICENSE](LICENSE) file for details.
