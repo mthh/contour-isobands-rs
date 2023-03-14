@@ -1,5 +1,4 @@
-use std::cmp::Ordering;
-use crate::area::{area, contains};
+use crate::contains::contains;
 use crate::errors::{new_error, Error, ErrorKind, Result};
 use crate::grid::BorrowedGrid;
 use crate::polygons::trace_band_paths;
@@ -182,8 +181,9 @@ impl ContourBuilder {
         self
     }
 
-    /// Generates contours for the given data and thresholds.
+    /// Generates contour MultiPolygons for the given data and thresholds.
     pub fn contours(&self, data: &[f64], thresholds: &[f64]) -> Result<Vec<Band>> {
+        // Generate the paths for each threshold (returned as a Vec of BandRaw)
         let mut bands = isobands(
             data,
             thresholds,
@@ -191,60 +191,103 @@ impl ContourBuilder {
             self.width,
             self.height,
         )?;
-        // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
-        // if they are not the default values
-        if (self.x_origin, self.y_origin) != (0f64, 0f64)
-            || (self.x_step, self.y_step) != (1f64, 1f64)
-        {
-            let res = bands
-                .drain(..)
-                .map(|(mut raw_band, min_v, max_v)| {
-                    let polygons: MultiPolygon = raw_band
+
+        // Build a MultiPolygon for each band
+        // and returns a Vec of Band
+        let res = bands
+            .drain(..)
+            .map(|(mut raw_band, min_v, max_v)| {
+                // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+                // if they are not the default values
+                let rings: Vec<LineString<f64>> = if (self.x_origin, self.y_origin) != (0f64, 0f64)
+                    || (self.x_step, self.y_step) != (1f64, 1f64)
+                {
+                    raw_band
                         .drain(..)
-                        .map(|mut poly| {
-                            poly.iter_mut().for_each(|point| {
+                        .map(|mut points| {
+                            points.iter_mut().for_each(|point| {
                                 let pt_x = point.x_mut();
                                 *pt_x = self.x_origin + *pt_x * self.x_step;
                                 let pt_y = point.y_mut();
                                 *pt_y = self.y_origin + *pt_y * self.y_step;
                             });
-                            Polygon::new(poly.into(), vec![])
+                            points.into()
                         })
-                        .collect::<Vec<Polygon<f64>>>()
-                        .into();
-                    Band {
-                        geometry: polygons,
-                        min_v,
-                        max_v,
-                    }
-                })
-                .collect::<Vec<Band>>();
-            Ok(res)
-        } else {
-            let res = bands
-                .drain(..)
-                .map(|(mut raw_band, min_v, max_v)| {
-                    let polygons: MultiPolygon = raw_band
+                        .collect::<Vec<LineString<f64>>>()
+                } else {
+                    raw_band
                         .drain(..)
-                        .map(|points| Polygon::new(points.into(), vec![]))
-                        .collect::<Vec<Polygon<f64>>>()
-                        .into();
-                    Band {
-                        geometry: polygons.into(),
-                        min_v,
-                        max_v,
+                        .map(|points| points.into())
+                        .collect::<Vec<LineString<f64>>>()
+                };
+
+                let mut enclosed_by = FxHashMap::default();
+
+                // Compute how many times a ring is enclosed by another ring
+                for (i, ring) in rings.iter().enumerate() {
+                    let mut enclosed_by_j = 0;
+                    for (j, ring_test) in rings.iter().enumerate() {
+                        if i == j {
+                            continue;
+                        }
+                        if contains(&ring_test.0, &ring.0) {
+                            enclosed_by_j += 1;
+                        }
                     }
+                    enclosed_by.insert(i, enclosed_by_j);
+                }
+
+                // Rings that are enclosed by 0 other ring are Polygon exterior rings.
+                // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
+                // Rings that are enclosed by 2 other rings are (new) Polygon exterior rings.
+                // And so on...
+                // We now need to reconstruct the polygons from the rings...
+                let mut polygons: Vec<Polygon<f64>> = Vec::new();
+                let mut interior_rings: Vec<LineString<f64>> = Vec::new();
+
+                // First we separate the exterior rings from the interior rings
+                for (i, ring) in rings.iter().enumerate() {
+                    let enclosed_by_i = enclosed_by.get(&i).unwrap();
+                    if *enclosed_by_i % 2 == 0 {
+                        polygons.push(Polygon::new(ring.clone(), vec![]));
+                    } else {
+                        interior_rings.push(ring.clone());
+                    }
+                }
+                // Then, for each interior ring, we find the exterior ring that encloses it
+                // and add it to the polygon
+                for interior_ring in interior_rings {
+                    let mut found = false;
+                    for polygon in polygons.iter_mut() {
+                        if contains(&polygon.exterior().0, &interior_ring.0) {
+                            polygon.interiors_push(interior_ring);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if !found {
+                        // This should never happen...
+                        return Err(new_error(ErrorKind::BadData));
+                    }
+                }
+
+                Ok(Band {
+                    geometry: polygons.into(),
+                    min_v,
+                    max_v,
                 })
-                .collect::<Vec<Band>>();
-            Ok(res)
-        }
+            })
+            .collect::<Result<Vec<Band>>>()?;
+
+        Ok(res)
     }
 }
 
 /// Generates contours for the given data and thresholds.
 /// Returns a `Vec` of [`BandRaw`] (this is the raw result
-/// of the marching squares algorithm,
-/// before converting the paths to geo_types geometries).
+/// of the marching squares algorithm that contains the paths
+/// of the Band as a Vec of Vec of Points - this is the intermediate
+/// result that is used to build the MultiPolygons in the `contours` method).
 pub fn isobands(
     data: &[f64],
     thresholds: &[f64],

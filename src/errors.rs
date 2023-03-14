@@ -37,6 +37,7 @@ pub enum ErrorKind {
     OutOfBounds,
     BadIntervals,
     BadData,
+    PolygonReconstructionError,
 }
 
 impl From<serde_json::error::Error> for Error {
@@ -67,6 +68,7 @@ impl fmt::Display for Error {
             ErrorKind::UnexpectedOutOfGridMove => write!(f, "Unexpected out of grid move"),
             ErrorKind::BadIntervals => write!(f, "Intervals argument must have at least 2 elements (representing the lower-bound and the upper-bound of the band to compute)"),
             ErrorKind::BadData => write!(f, "Data must have at least some values"),
+            ErrorKind::PolygonReconstructionError => write!(f, "Error while reconstructing the polygons from rings (this is a bug, please report it)")
         }
     }
 }

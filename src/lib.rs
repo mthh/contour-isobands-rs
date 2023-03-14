@@ -43,6 +43,7 @@
 //! [`MultiPolygon`]: ../geo_types/geometry/struct.MultiPolygon.html
 #![cfg_attr(debug_assertions, allow(dead_code))]
 mod area;
+mod contains;
 mod errors;
 mod grid;
 mod isobands;

@@ -151,7 +151,7 @@ pub(crate) fn trace_band_paths(
                         let origin =
                             Point::new(i as f64 + edge.path[0].0, j as f64 + edge.path[0].1);
 
-                        path.push(origin.clone());
+                        path.push(origin);
 
                         /* start traceback */
                         while !finalized {
