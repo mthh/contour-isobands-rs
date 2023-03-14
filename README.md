@@ -91,6 +91,10 @@ let result: Vec<Band> = ContourBuilder::new(7, 6)
     .contours(&values, &intervals)?;
 ```
 
+### WASM demo
+
+A demo of this crate, compiled to WebAssembly, is available on [https://mthh.github.io/contour-isobands-wasm/](https://mthh.github.io/contour-isobands-wasm/).
+
 ### Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
 
 While the [contour](https://crates.io/crates/contour) crate computes *__isolines__*
