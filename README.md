@@ -6,7 +6,7 @@
 Compute isobands *(i.e. contour polygons which enclose all the points of a grid included
 between two given values)* by applying marching squares to an array of values.
 
-![](illustration.png)
+![](https://raw.githubusercontent.com/mthh/contour-isobands-rs/main/illustration.png)
 
 ### Usage
 
