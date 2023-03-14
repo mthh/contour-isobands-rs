@@ -1,17 +1,18 @@
 use crate::isobands::Pt;
+use geo_types::{Coord, Point};
 
-pub fn area(ring: &[Pt]) -> f64 {
+pub fn area(ring: &[Point<f64>]) -> f64 {
     let mut i = 0;
     let n = ring.len() - 1;
-    let mut area = ring[n - 1].1 * ring[0].0 - ring[n - 1].0 * ring[0].1;
+    let mut area = ring[n - 1].y() * ring[0].x() - ring[n - 1].x() * ring[0].y();
     while i < n {
         i += 1;
-        area += ring[i - 1].1 * ring[i].0 - ring[i - 1].0 * ring[i].1;
+        area += ring[i - 1].y() * ring[i].x() - ring[i - 1].x() * ring[i].y();
     }
     area
 }
 
-pub fn contains(ring: &[Pt], hole: &[Pt]) -> bool {
+pub fn contains(ring: &[Coord<f64>], hole: &[Coord<f64>]) -> bool {
     let mut i = 0;
     let n = hole.len();
     let mut c;
@@ -25,20 +26,20 @@ pub fn contains(ring: &[Pt], hole: &[Pt]) -> bool {
     false
 }
 
-fn ring_contains(ring: &[Pt], point: &Pt) -> bool {
-    let x = point.0;
-    let y = point.1;
+fn ring_contains(ring: &[Coord<f64>], point: &Coord<f64>) -> bool {
+    let x = point.x;
+    let y = point.y;
     let n = ring.len();
     // let mut contains = -1;
     let mut contains = false;
     let mut j = n - 1;
     for i in 0..n {
         let pi = &ring[i];
-        let xi = pi.0;
-        let yi = pi.1;
+        let xi = pi.x;
+        let yi = pi.y;
         let pj = &ring[j];
-        let xj = pj.0;
-        let yj = pj.1;
+        let xj = pj.x;
+        let yj = pj.y;
         if segment_contains(pi, pj, point) {
             return false;
         }
@@ -51,20 +52,20 @@ fn ring_contains(ring: &[Pt], point: &Pt) -> bool {
     contains
 }
 
-fn segment_contains(a: &Pt, b: &Pt, c: &Pt) -> bool {
+fn segment_contains(a: &Coord<f64>, b: &Coord<f64>, c: &Coord<f64>) -> bool {
     if collinear(a, b, c) {
-        if (a.0 - b.0).abs() < f64::EPSILON {
-            within(a.1, c.1, b.1)
+        if (a.x - b.x).abs() < f64::EPSILON {
+            within(a.y, c.y, b.y)
         } else {
-            within(a.0, c.0, b.0)
+            within(a.x, c.x, b.x)
         }
     } else {
         false
     }
 }
 
-fn collinear(a: &Pt, b: &Pt, c: &Pt) -> bool {
-    ((b.0 - a.0) * (c.1 - a.1) - (c.0 - a.0) * (b.1 - a.1)).abs() < f64::EPSILON
+fn collinear(a: &Coord<f64>, b: &Coord<f64>, c: &Coord<f64>) -> bool {
+    ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)).abs() < f64::EPSILON
 }
 
 fn within(p: f64, q: f64, r: f64) -> bool {

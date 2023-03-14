@@ -1,11 +1,10 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::grid::{BorrowedGrid, GridTrait};
+use crate::grid::BorrowedGrid;
 use crate::isobands::{Cell, EnterType, Pt, Settings};
+use geo_types::Point;
 
 fn require_frame(data: &BorrowedGrid<f64>, lowerbound: f64, upperbound: f64) -> bool {
     let mut frame_required: bool = true;
-    // let rows = data.len();
-    // let cols = data[0].len();
     let rows = data.height();
     let cols = data.width();
 
@@ -43,7 +42,7 @@ fn require_frame(data: &BorrowedGrid<f64>, lowerbound: f64, upperbound: f64) -> 
     frame_required
 }
 
-fn entry_coordinate(x: i32, y: i32, mode: usize, path: &[Pt]) -> Pt {
+fn entry_coordinate(x: i32, y: i32, mode: usize, path: &[Pt]) -> Point<f64> {
     let mut x = x as f64;
     let mut y = y as f64;
     if mode == 0 {
@@ -62,10 +61,10 @@ fn entry_coordinate(x: i32, y: i32, mode: usize, path: &[Pt]) -> Pt {
         y += 1.;
     }
 
-    Pt(x, y)
+    Point::new(x, y)
 }
 
-fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
+fn skip_coordinate(x: i32, y: i32, mode: usize) -> Point<f64> {
     let mut x = x;
     let mut y = y;
     if mode == 0 {
@@ -82,7 +81,7 @@ fn skip_coordinate(x: i32, y: i32, mode: usize) -> Pt {
         y += 1;
     }
 
-    Pt(x as f64, y as f64)
+    Point::new(x as f64, y as f64)
 }
 
 #[inline]
@@ -99,10 +98,8 @@ pub(crate) fn trace_band_paths(
     data: &BorrowedGrid<f64>,
     cell_grid: &mut Vec<Vec<Option<Cell>>>,
     opt: &Settings,
-) -> Result<Vec<Vec<Pt>>> {
-    let mut polygons: Vec<Vec<Pt>> = Vec::new();
-    // let rows = data.len() - 1;
-    // let cols = data[0].len() - 1;
+) -> Result<Vec<Vec<Point<f64>>>> {
+    let mut polygons: Vec<Vec<Point<f64>>> = Vec::new();
     let rows = data.height() - 1;
     let cols = data.width() - 1;
 
@@ -129,11 +126,11 @@ pub(crate) fn trace_band_paths(
 
     if require_frame(data, opt.min_v, opt.max_v) {
         polygons.push(vec![
-            Pt(0., 0.),
-            Pt(0., rows as f64),
-            Pt(cols as f64, rows as f64),
-            Pt(cols as f64, 0.),
-            Pt(0., 0.),
+            Point::new(0., 0.),
+            Point::new(0., rows as f64),
+            Point::new(cols as f64, rows as f64),
+            Point::new(cols as f64, 0.),
+            Point::new(0., 0.),
         ]);
     }
 
@@ -151,7 +148,8 @@ pub(crate) fn trace_band_paths(
                         let mut x = i as i32;
                         let mut y = j as i32;
                         let mut finalized = false;
-                        let origin = Pt(i as f64 + edge.path[0].0, j as f64 + edge.path[0].1);
+                        let origin =
+                            Point::new(i as f64 + edge.path[0].0, j as f64 + edge.path[0].1);
 
                         path.push(origin.clone());
 
@@ -165,7 +163,6 @@ pub(crate) fn trace_band_paths(
                                 return Err(new_error(ErrorKind::OutOfBounds));
                             }
 
-                            // println!("x: {}, y: {}, enter: {:?}, cc: {:?}", x, y, enter, _cc);
                             // let mut _cc = cell_grid[x as usize][y as usize].as_mut();
                             // if _cc.is_none() {
                             //     break;
@@ -182,7 +179,8 @@ pub(crate) fn trace_band_paths(
                             let mut ee = &_ee.unwrap();
 
                             /* add last point of edge to path array, since we extend a polygon */
-                            let point = Pt(ee.path[1].0 + x as f64, ee.path[1].1 + y as f64);
+                            let point =
+                                Point::new(ee.path[1].0 + x as f64, ee.path[1].1 + y as f64);
                             path.push(point);
 
                             enter = ee.move_info.enter.clone();
@@ -286,8 +284,7 @@ pub(crate) fn trace_band_paths(
                             }
                         }
 
-                        if path[path.len() - 1].0 != origin.0 || path[path.len() - 1].1 != origin.1
-                        {
+                        if path[path.len() - 1].x_y() != origin.x_y() {
                             path.push(origin);
                         }
 

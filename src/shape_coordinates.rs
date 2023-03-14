@@ -1,5 +1,5 @@
 use crate::errors::{new_error, ErrorKind, Result};
-use crate::grid::{BorrowedGrid, GridTrait};
+use crate::grid::BorrowedGrid;
 use crate::isobands::{Cell, Edge, EnterType, MoveInfo, Pt, Settings};
 use rustc_hash::FxHashMap;
 // use lazy_static::lazy_static;

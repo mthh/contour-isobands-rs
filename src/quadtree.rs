@@ -1,4 +1,4 @@
-use crate::grid::{BorrowedGrid, GridCoord, GridTrait};
+use crate::grid::{BorrowedGrid, GridCoord};
 
 #[derive(Debug)]
 pub(crate) struct TreeNode {

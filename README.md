@@ -7,6 +7,15 @@ between two given values)* by applying marching squares to an array of values.
 
 ### Usage
 
+Add the following to your `Cargo.toml`:
+
+```toml
+[dependencies]
+contour-isobands-rs = "0.1.0"
+```
+
+Then, you can use the `ContourBuilder` to compute isobands:
+
 ```rust
 use contour_isobands_rs::{ContourBuilder, Band};
 
@@ -27,9 +36,43 @@ let intervals = vec![1, 5, 7, 15];
 
 let result: Vec<Band> = ContourBuilder::new(7, 6)
     .use_quadtree(true)
-    .contours(&values, &intervals);
+    .contours(&values, &intervals)?;
 
 assert_eq!(result.len(), 3);
+```
+
+Each `Band` struct contains a geometry (`MultiPolygon<f64>`) and the minimum and maximum values of the band.
+It can be serialized to geojson using the `geojson` feature:
+
+```rust
+use contour_isobands_rs::{ContourBuilder, Band};
+use geojson::{Feature, FeatureCollection};
+
+let values = vec![
+    1., 1., 1., 1., 1., 1., 1.,
+    1., 5., 5., 5., 5., 5., 1.,
+    1., 5., 15., 15., 15., 5., 1.,
+    1., 5., 10., 10., 10., 5., 1.,
+    1., 5., 5., 5., 5., 5., 1.,
+    1., 1., 1., 1., 1., 1., 1.,
+];
+
+let intervals = vec![1, 5, 7, 15];
+
+let result = ContourBuilder::new(7, 6)
+    .use_quadtree(true)
+    .contours(&values, &intervals)?;
+    
+let features = result.iter()
+    .map(|band| band.to_geojson())
+    .collect::<Vec<geojson::Feature>>();
+
+let geojson_string = GeoJson::from(
+    FeatureCollection {
+        bbox: None,
+        features,
+        foreign_members: None,
+    }).to_string();
 ```
 
 ### Difference with [`mthh/contour-rs`](https://github.com/mthh/contour-rs)

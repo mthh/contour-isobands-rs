@@ -1,10 +1,11 @@
+use std::cmp::Ordering;
 use crate::area::{area, contains};
 use crate::errors::{new_error, Error, ErrorKind, Result};
-use crate::grid::{BorrowedGrid, GridTrait};
+use crate::grid::BorrowedGrid;
 use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
-use geo_types::{MultiPolygon, Point, Polygon};
+use geo_types::{LineString, MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
 /// A point, as a tuple, where the first element is the x coordinate
@@ -16,7 +17,7 @@ pub struct Pt(pub f64, pub f64);
 /// where the first element is a vector of paths,
 /// the second is the minimum value
 /// and the third is the maximum value.
-pub type BandRaw = (Vec<Vec<Pt>>, f64, f64);
+pub type BandRaw = (Vec<Vec<Point<f64>>>, f64, f64);
 
 /// An isoband, described by its min and max value and MultiPolygon.
 #[derive(Debug)]
@@ -26,16 +27,16 @@ pub struct Band {
     /// The maximum value of the isoband
     pub max_v: f64,
     /// The MultiPolygon enclosing the points between min_v and max_v
-    pub polygons: MultiPolygon<f64>,
+    pub geometry: MultiPolygon<f64>,
 }
 
 impl Band {
     pub fn geometry(&self) -> &MultiPolygon<f64> {
-        &self.polygons
+        &self.geometry
     }
 
     pub fn into_inner(self) -> (MultiPolygon<f64>, f64, f64) {
-        (self.polygons, self.min_v, self.max_v)
+        (self.geometry, self.min_v, self.max_v)
     }
 
     pub fn min_v(&self) -> f64 {
@@ -183,7 +184,7 @@ impl ContourBuilder {
 
     /// Generates contours for the given data and thresholds.
     pub fn contours(&self, data: &[f64], thresholds: &[f64]) -> Result<Vec<Band>> {
-        let bands = isobands(
+        let mut bands = isobands(
             data,
             thresholds,
             self.use_quad_tree,
@@ -191,56 +192,47 @@ impl ContourBuilder {
             self.height,
         )?;
         // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+        // if they are not the default values
         if (self.x_origin, self.y_origin) != (0f64, 0f64)
             || (self.x_step, self.y_step) != (1f64, 1f64)
         {
             let res = bands
-                .iter()
-                .map(|(raw_band, min_v, max_v)| {
-                    let polygons = raw_band
-                        .iter()
-                        .map(|poly| {
-                            let points: Vec<Point<f64>> = poly
-                                .iter()
-                                .map(|pt| {
-                                    Point::new(
-                                        self.x_origin + pt.0 * self.x_step,
-                                        self.y_origin + pt.1 * self.y_step,
-                                    )
-                                })
-                                .collect::<Vec<Point<f64>>>();
-                            Polygon::new(points.into(), vec![])
+                .drain(..)
+                .map(|(mut raw_band, min_v, max_v)| {
+                    let polygons: MultiPolygon = raw_band
+                        .drain(..)
+                        .map(|mut poly| {
+                            poly.iter_mut().for_each(|point| {
+                                let pt_x = point.x_mut();
+                                *pt_x = self.x_origin + *pt_x * self.x_step;
+                                let pt_y = point.y_mut();
+                                *pt_y = self.y_origin + *pt_y * self.y_step;
+                            });
+                            Polygon::new(poly.into(), vec![])
                         })
                         .collect::<Vec<Polygon<f64>>>()
                         .into();
                     Band {
-                        polygons,
-                        min_v: *min_v,
-                        max_v: *max_v,
+                        geometry: polygons,
+                        min_v,
+                        max_v,
                     }
                 })
                 .collect::<Vec<Band>>();
             Ok(res)
         } else {
             let res = bands
-                .iter()
-                .map(|(raw_band, min_v, max_v)| {
-                    let polygons = raw_band
-                        .iter()
-                        .map(|poly| {
-                            // println!("{:?}", area(poly));
-                            let points: Vec<Point<f64>> = poly
-                                .iter()
-                                .map(|pt| Point::new(pt.0, pt.1))
-                                .collect::<Vec<Point<f64>>>();
-                            Polygon::new(points.into(), vec![])
-                        })
+                .drain(..)
+                .map(|(mut raw_band, min_v, max_v)| {
+                    let polygons: MultiPolygon = raw_band
+                        .drain(..)
+                        .map(|points| Polygon::new(points.into(), vec![]))
                         .collect::<Vec<Polygon<f64>>>()
                         .into();
                     Band {
-                        polygons,
-                        min_v: *min_v,
-                        max_v: *max_v,
+                        geometry: polygons.into(),
+                        min_v,
+                        max_v,
                     }
                 })
                 .collect::<Vec<Band>>();
@@ -289,14 +281,6 @@ fn empty_cell_grid(li: usize, lj: usize) -> Vec<Vec<Option<Cell>>> {
     cell_grid
 }
 
-// fn empty_cell_grid2(li: usize, lj: usize) -> Grid<Option<Cell>> {
-//     let mut cell_grid: Vec<Option<Cell>> = Vec::with_capacity((li - 1) * (lj - 1));
-//     for i in 0..(li - 1) * (lj - 1) {
-//         cell_grid.push(None);
-//     }
-//     Grid::new_from_vec(cell_grid, li - 1, lj - 1)
-// }
-
 fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
     let lj = data.height();
     let li = data.width();
@@ -304,7 +288,6 @@ fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<Band
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
-    // let mut cell_grid2: Grid<Option<Cell>> = empty_cell_grid2(li, lj);
 
     let res = thresholds
         .iter()
@@ -328,13 +311,8 @@ fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<Band
                     Ok::<(), Error>(())
                 })
             })?;
-            // cell_grid2.iter_mut().try_for_each(|(cell, j, i)| {
-            //     *cell = prepare_cell(j, i, &data, &opt)?;
-            //     Ok::<(), Error>(())
-            // })?;
 
             let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
-            // display_debug_info(&band_polygons);
             Ok((band_polygons, min, max))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
@@ -352,7 +330,6 @@ fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result
 
     // Allocate the cell grid once
     let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
-    // let mut cell_grid2: Grid<Option<Cell>> = empty_cell_grid2(li, lj);
 
     let res = thresholds
         .iter()
@@ -377,43 +354,17 @@ fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result
                     })
                 });
             }
-            // if i > 0 {
-            //     cell_grid2.iter_mut().for_each(|(cell, _, _)| {
-            //         *cell = None;
-            //     });
-            // }
 
             // Fill up the grid with cell information
             for (i, j) in tree.cells_in_band(opt.min_v, opt.max_v) {
                 cell_grid[i][j] = prepare_cell(i, j, &data, &opt)?;
-                // cell_grid2[(i, j)] = prepare_cell(i, j, &data, &opt)?;
             }
 
             let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
-            // display_debug_info(&band_polygons);
+
             Ok((band_polygons, min, max))
         })
         .collect::<Result<Vec<BandRaw>>>()?;
 
     Ok(res)
-}
-
-fn display_debug_info(band_polygons: &[Vec<Pt>]) {
-    println!("Start band");
-    let n_poly = band_polygons.len();
-    println!("n_poly = {:?}", n_poly);
-    for b in band_polygons {
-        println!("area = {:?}", area(b));
-        if n_poly > 1 {
-            println!(
-                "last poly contains this one : {:?}",
-                contains(&band_polygons[n_poly - 1], b)
-            );
-            println!(
-                "first poly contains this one : {:?}",
-                contains(&band_polygons[0], b)
-            );
-        }
-    }
-    println!("End band\n");
 }
