@@ -1,6 +1,6 @@
 use geo_types::Coord;
 
-pub fn contains(ring: &[Coord<f64>], hole: &[Coord<f64>]) -> bool {
+pub(crate) fn contains(ring: &[Coord<f64>], hole: &[Coord<f64>]) -> bool {
     let mut i = 0;
     let n = hole.len();
     let mut c;

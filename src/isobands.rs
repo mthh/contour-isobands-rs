@@ -1,10 +1,11 @@
+use crate::area::area;
 use crate::contains::contains;
 use crate::errors::{new_error, Error, ErrorKind, Result};
 use crate::grid::BorrowedGrid;
 use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
-use geo_types::{LineString, MultiPolygon, Point, Polygon};
+use geo_types::{Coord, LineString, MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
 /// A point, as a tuple, where the first element is the x coordinate
@@ -197,33 +198,33 @@ impl ContourBuilder {
         let res = bands
             .drain(..)
             .map(|(mut raw_band, min_v, max_v)| {
-                // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
-                // if they are not the default values
-                let rings: Vec<LineString<f64>> = if (self.x_origin, self.y_origin) != (0f64, 0f64)
-                    || (self.x_step, self.y_step) != (1f64, 1f64)
-                {
-                    raw_band
-                        .drain(..)
-                        .map(|mut points| {
+                // First, convert the isobands paths to LineStrings
+                let mut rings: Vec<LineString<f64>> = raw_band
+                    .drain(..)
+                    .map(|mut points| {
+                        if (self.x_origin, self.y_origin) != (0f64, 0f64)
+                            || (self.x_step, self.y_step) != (1f64, 1f64)
+                        {
+                            // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+                            // if they are not the default values
                             points.iter_mut().for_each(|point| {
                                 let pt_x = point.x_mut();
                                 *pt_x = self.x_origin + *pt_x * self.x_step;
                                 let pt_y = point.y_mut();
                                 *pt_y = self.y_origin + *pt_y * self.y_step;
                             });
-                            points.into()
-                        })
-                        .collect::<Vec<LineString<f64>>>()
-                } else {
-                    raw_band
-                        .drain(..)
-                        .map(|points| points.into())
-                        .collect::<Vec<LineString<f64>>>()
-                };
+                        }
+                        // Sometimes paths have repeated points, so we remove them
+                        points.dedup();
+                        points.into()
+                    })
+                    // We dont want 'empty' rings
+                    .filter(|ring: &LineString| ring.0.len() > 2)
+                    .collect::<Vec<LineString<f64>>>();
 
-                let mut enclosed_by = FxHashMap::default();
+                // Then we compute how many times a ring is enclosed by another ring
+                let mut enclosed_by_n = FxHashMap::default();
 
-                // Compute how many times a ring is enclosed by another ring
                 for (i, ring) in rings.iter().enumerate() {
                     let mut enclosed_by_j = 0;
                     for (j, ring_test) in rings.iter().enumerate() {
@@ -234,29 +235,40 @@ impl ContourBuilder {
                             enclosed_by_j += 1;
                         }
                     }
-                    enclosed_by.insert(i, enclosed_by_j);
+                    enclosed_by_n.insert(i, enclosed_by_j);
                 }
 
-                // Rings that are enclosed by 0 other ring are Polygon exterior rings.
-                // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
-                // Rings that are enclosed by 2 other rings are (new) Polygon exterior rings.
-                // And so on...
-                // We now need to reconstruct the polygons from the rings...
+                // We now need to reconstruct the polygons from the rings
                 let mut polygons: Vec<Polygon<f64>> = Vec::new();
                 let mut interior_rings: Vec<LineString<f64>> = Vec::new();
 
                 // First we separate the exterior rings from the interior rings
-                for (i, ring) in rings.iter().enumerate() {
-                    let enclosed_by_i = enclosed_by.get(&i).unwrap();
+                for (i, mut ring) in rings.drain(..).enumerate() {
+                    let enclosed_by_i = enclosed_by_n.get(&i).unwrap();
+                    // Rings that are enclosed by 0 other ring are Polygon exterior rings.
+                    // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
+                    // Rings that are enclosed by 2 other rings are (new) Polygon exterior rings.
+                    // And so on...
                     if *enclosed_by_i % 2 == 0 {
-                        polygons.push(Polygon::new(ring.clone(), vec![]));
+                        // This is an exterior ring
+                        // We want it to be counter-clockwise
+                        if !is_winding_correct(&ring.0, &RingRole::Outer) {
+                            ring.0.reverse();
+                        }
+                        polygons.push(Polygon::new(ring, vec![]));
                     } else {
-                        interior_rings.push(ring.clone());
+                        // This is an interior ring
+                        // We want it to be clockwise
+                        if !is_winding_correct(&ring.0, &RingRole::Inner) {
+                            ring.0.reverse();
+                        }
+                        interior_rings.push(ring);
                     }
                 }
+
                 // Then, for each interior ring, we find the exterior ring that encloses it
                 // and add it to the polygon
-                for interior_ring in interior_rings {
+                for interior_ring in interior_rings.drain(..) {
                     let mut found = false;
                     for polygon in polygons.iter_mut() {
                         if contains(&polygon.exterior().0, &interior_ring.0) {
@@ -267,7 +279,7 @@ impl ContourBuilder {
                     }
                     if !found {
                         // This should never happen...
-                        return Err(new_error(ErrorKind::BadData));
+                        return Err(new_error(ErrorKind::PolygonReconstructionError));
                     }
                 }
 
@@ -283,11 +295,26 @@ impl ContourBuilder {
     }
 }
 
+#[derive(PartialEq)]
+enum RingRole {
+    Outer,
+    Inner,
+}
+
+fn is_winding_correct(points: &[Coord<f64>], role: &RingRole) -> bool {
+    let area = area(points);
+    if role == &RingRole::Outer {
+        area > 0f64
+    } else {
+        area < 0f64
+    }
+}
+
 /// Generates contours for the given data and thresholds.
-/// Returns a `Vec` of [`BandRaw`] (this is the raw result
-/// of the marching squares algorithm that contains the paths
-/// of the Band as a Vec of Vec of Points - this is the intermediate
-/// result that is used to build the MultiPolygons in the `contours` method).
+/// Returns a `Vec` of [`BandRaw`] (this is the raw result of the marching
+/// squares algorithm that contains the paths of the Band as a Vec of Vec
+/// of Points - this is the intermediate result that is used to build
+/// the MultiPolygons in the `ContourBuilder.contours` method).
 pub fn isobands(
     data: &[f64],
     thresholds: &[f64],
