@@ -14,7 +14,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-contour-isobands-rs = "0.1.0"
+contour-isobands-rs = "0.2.0"
 ```
 
 Then, you can use the `ContourBuilder` to compute isobands:
@@ -46,6 +46,11 @@ assert_eq!(result.len(), 3);
 
 Each `Band` struct contains a geometry (`MultiPolygon<f64>`) and the minimum and maximum values of the band.
 It can be serialized to geojson using the `geojson` feature:
+
+```toml
+[dependencies]
+contour-isobands-rs = { "0.2.0", features = ["geojson"] }
+```
 
 ```rust
 use contour_isobands_rs::{ContourBuilder, Band};
