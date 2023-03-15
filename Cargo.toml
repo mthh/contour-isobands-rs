@@ -21,3 +21,7 @@ rustc-hash = "^1.1"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "geojson"
+required-features = ["geojson"]

@@ -14,7 +14,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-contour-isobands-rs = "0.2.0"
+contour-isobands = "0.2.0"
 ```
 
 Then, you can use the `ContourBuilder` to compute isobands:
@@ -49,7 +49,7 @@ It can be serialized to geojson using the `geojson` feature:
 
 ```toml
 [dependencies]
-contour-isobands-rs = { "0.2.0", features = ["geojson"] }
+contour-isobands = { version = "0.2.0", features = ["geojson"] }
 ```
 
 ```rust
@@ -88,10 +88,10 @@ using the `x_origin`, `y_origin`, `x_step` and `y_step` parameters of the `Conto
 
 ```rust
 let result: Vec<Band> = ContourBuilder::new(7, 6)
-    .x_origin(-6.141583932015321)
-    .y_origin(51.7591540368963)
-    .x_step(-0.119)
-    .y_step(0.09)
+    .x_origin(-6.144721)
+    .y_origin(51.781713)
+    .x_step(0.118759)
+    .y_step(-0.089932)
     .use_quadtree(true)
     .contours(&values, &intervals)?;
 ```
