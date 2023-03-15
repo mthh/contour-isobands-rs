@@ -20,7 +20,7 @@ contour-isobands = "0.2.0"
 Then, you can use the `ContourBuilder` to compute isobands:
 
 ```rust
-use contour_isobands_rs::{ContourBuilder, Band};
+use contour_isobands::{ContourBuilder, Band};
 
 let values = vec![
     1., 1., 1., 1., 1., 1., 1.,
@@ -53,7 +53,7 @@ contour-isobands = { version = "0.2.0", features = ["geojson"] }
 ```
 
 ```rust
-use contour_isobands_rs::{ContourBuilder, Band};
+use contour_isobands::{ContourBuilder, Band};
 use geojson::{Feature, FeatureCollection};
 
 let values = vec![
