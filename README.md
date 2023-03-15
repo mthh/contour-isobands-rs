@@ -35,10 +35,10 @@ let values = vec![
 // - the first one will contain all points between 1 (included) and 5 (excluded)
 // - the second one will contain all points between 5 (included) and 7 (excluded)
 // - the third one will contain all points between 7 (included) and 15 (included)
-let intervals = vec![1, 5, 7, 15];
+let intervals = vec![1., 5., 7., 15.];
 
 let result: Vec<Band> = ContourBuilder::new(7, 6)
-    .use_quadtree(true)
+    .use_quad_tree(true)
     .contours(&values, &intervals)?;
 
 assert_eq!(result.len(), 3);
@@ -65,10 +65,10 @@ let values = vec![
     1., 1., 1., 1., 1., 1., 1.,
 ];
 
-let intervals = vec![1, 5, 7, 15];
+let intervals = vec![1., 5., 7., 15.];
 
 let result = ContourBuilder::new(7, 6)
-    .use_quadtree(true)
+    .use_quad_tree(true)
     .contours(&values, &intervals)?;
     
 let features = result.iter()
@@ -92,7 +92,7 @@ let result: Vec<Band> = ContourBuilder::new(7, 6)
     .y_origin(51.781713)
     .x_step(0.118759)
     .y_step(-0.089932)
-    .use_quadtree(true)
+    .use_quad_tree(true)
     .contours(&values, &intervals)?;
 ```
 
