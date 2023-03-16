@@ -17,6 +17,7 @@ pub struct Pt(pub f64, pub f64);
 /// where the first element is a vector of paths,
 /// the second is the minimum value
 /// and the third is the maximum value.
+/// See the [`Band`] struct for a more convenient representation.
 pub type BandRaw = (Vec<Vec<Point<f64>>>, f64, f64);
 
 /// An isoband, described by its min and max value and MultiPolygon.
@@ -314,7 +315,7 @@ fn is_winding_correct(points: &[Coord<f64>], role: &RingRole) -> bool {
 /// Returns a `Vec` of [`BandRaw`] (this is the raw result of the marching
 /// squares algorithm that contains the paths of the Band as a Vec of Vec
 /// of Points - this is the intermediate result that is used to build
-/// the MultiPolygons in the `ContourBuilder.contours` method).
+/// the MultiPolygons in the [`ContourBuilder::contours`] method).
 pub fn isobands(
     data: &[f64],
     thresholds: &[f64],
