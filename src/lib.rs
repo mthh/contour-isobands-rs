@@ -3,8 +3,11 @@
 //! all the points of a grid included between two chosen values)*
 //! by applying marching squares to an array of values.
 //!
+//! Use the [`ContourBuilder`] to create the contour polygons.
 //! Output is a Vec of [`Band`], each [`Band`] is characterized by its minimum value,
-//! its maximum value, and a [`MultiPolygon`] geometry.
+//! its maximum value, and a [`MultiPolygon`] geometry. Each band can be serialised
+//! to a GeoJSON Feature (using the `Band::to_geojson` method that is enabled if compiling
+//! this crate with the optional `geojson` feature flag).
 //! #### Example:
 #![cfg_attr(feature = "geojson", doc = "```")]
 #![cfg_attr(not(feature = "geojson"), doc = "```ignore")]
@@ -23,7 +26,7 @@
 //!     0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 //! ], &[0.5, 1.]).unwrap(); // values, thresholds
 //!
-//! let output = serde_json::json!({
+//! let expected_output = serde_json::json!({
 //!   "type": "Feature",
 //!   "geometry": {
 //!     "type": "MultiPolygon",
@@ -38,7 +41,10 @@
 //!   "properties": {"min_v": 0.5, "max_v": 1.0}
 //! });
 //!
-//! assert_eq!(res[0].to_geojson(), std::convert::TryFrom::try_from(output).unwrap());
+//! assert_eq!(
+//!     res[0].to_geojson(),
+//!     std::convert::TryFrom::try_from(expected_output).unwrap(),
+//! );
 //! ```
 //! [`MultiPolygon`]: ../geo_types/geometry/struct.MultiPolygon.html
 #![cfg_attr(debug_assertions, allow(dead_code))]
@@ -51,7 +57,7 @@ mod polygons;
 mod quadtree;
 mod shape_coordinates;
 
-pub use crate::isobands::{isobands, Band, ContourBuilder};
+pub use crate::isobands::{isobands, Band, BandRaw, ContourBuilder};
 
 #[cfg(test)]
 mod tests {
