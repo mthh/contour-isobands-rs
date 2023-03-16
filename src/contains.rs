@@ -1,15 +1,11 @@
 use geo_types::Coord;
 
+/// Compute whether a given ring contains a given hole.
 pub(crate) fn contains(ring: &[Coord<f64>], hole: &[Coord<f64>]) -> bool {
-    let mut i = 0;
-    let n = hole.len();
-    let mut c;
-    while i < n {
-        c = ring_contains(ring, &hole[i]);
-        if c {
-            return c;
+    for point in hole.iter() {
+        if ring_contains(ring, point) {
+            return true;
         }
-        i += 1;
     }
     false
 }
@@ -21,8 +17,7 @@ fn ring_contains(ring: &[Coord<f64>], point: &Coord<f64>) -> bool {
     // let mut contains = -1;
     let mut contains = false;
     let mut j = n - 1;
-    for i in 0..n {
-        let pi = &ring[i];
+    for (i, pi) in ring.iter().enumerate() {
         let xi = pi.x;
         let yi = pi.y;
         let pj = &ring[j];
