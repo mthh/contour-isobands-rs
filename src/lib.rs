@@ -56,6 +56,7 @@ mod isobands;
 mod polygons;
 mod quadtree;
 mod shape_coordinates;
+mod utils;
 
 pub use crate::isobands::{isobands, Band, BandRaw, ContourBuilder};
 

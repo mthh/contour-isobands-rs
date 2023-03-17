@@ -1,11 +1,11 @@
-use crate::area::area;
 use crate::contains::contains;
 use crate::errors::{new_error, Error, ErrorKind, Result};
 use crate::grid::BorrowedGrid;
 use crate::polygons::trace_band_paths;
 use crate::quadtree::QuadTree;
 use crate::shape_coordinates::prepare_cell;
-use geo_types::{Coord, LineString, MultiPolygon, Point, Polygon};
+use crate::utils::{empty_cell_grid, is_winding_correct};
+use geo_types::{LineString, MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
 /// A point, as a tuple, where the first element is the x coordinate
@@ -186,7 +186,7 @@ impl ContourBuilder {
     /// Generates contour MultiPolygons for the given data and thresholds.
     pub fn contours(&self, data: &[f64], thresholds: &[f64]) -> Result<Vec<Band>> {
         // Generate the paths for each threshold (returned as a Vec of BandRaw)
-        let mut bands = isobands(
+        let bands = isobands(
             data,
             thresholds,
             self.use_quad_tree,
@@ -197,11 +197,11 @@ impl ContourBuilder {
         // Build a MultiPolygon for each band
         // and returns a Vec of Band
         let res = bands
-            .drain(..)
-            .map(|(mut raw_band, min_v, max_v)| {
+            .into_iter()
+            .map(|(raw_band, min_v, max_v)| {
                 // First, convert the isobands paths to LineStrings
-                let mut rings: Vec<LineString<f64>> = raw_band
-                    .drain(..)
+                let rings: Vec<LineString<f64>> = raw_band
+                    .into_iter()
                     .map(|mut points| {
                         if (self.x_origin, self.y_origin) != (0f64, 0f64)
                             || (self.x_step, self.y_step) != (1f64, 1f64)
@@ -244,7 +244,7 @@ impl ContourBuilder {
                 let mut interior_rings: Vec<LineString<f64>> = Vec::new();
 
                 // First we separate the exterior rings from the interior rings
-                for (i, mut ring) in rings.drain(..).enumerate() {
+                for (i, mut ring) in rings.into_iter().enumerate() {
                     let enclosed_by_i = enclosed_by_n.get(&i).unwrap();
                     // Rings that are enclosed by 0 other ring are Polygon exterior rings.
                     // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
@@ -253,14 +253,14 @@ impl ContourBuilder {
                     if *enclosed_by_i % 2 == 0 {
                         // This is an exterior ring
                         // We want it to be counter-clockwise
-                        if !is_winding_correct(&ring.0, &RingRole::Outer) {
+                        if !is_winding_correct(&ring.0, true) {
                             ring.0.reverse();
                         }
                         polygons.push(Polygon::new(ring, vec![]));
                     } else {
                         // This is an interior ring
                         // We want it to be clockwise
-                        if !is_winding_correct(&ring.0, &RingRole::Inner) {
+                        if !is_winding_correct(&ring.0, false) {
                             ring.0.reverse();
                         }
                         interior_rings.push(ring);
@@ -269,7 +269,7 @@ impl ContourBuilder {
 
                 // Then, for each interior ring, we find the exterior ring that encloses it
                 // and add it to the polygon
-                for interior_ring in interior_rings.drain(..) {
+                for interior_ring in interior_rings.into_iter() {
                     let mut found = false;
                     for polygon in polygons.iter_mut() {
                         if contains(&polygon.exterior().0, &interior_ring.0) {
@@ -293,21 +293,6 @@ impl ContourBuilder {
             .collect::<Result<Vec<Band>>>()?;
 
         Ok(res)
-    }
-}
-
-#[derive(PartialEq)]
-enum RingRole {
-    Outer,
-    Inner,
-}
-
-fn is_winding_correct(points: &[Coord<f64>], role: &RingRole) -> bool {
-    let area = area(points);
-    if role == &RingRole::Outer {
-        area > 0f64
-    } else {
-        area < 0f64
     }
 }
 
@@ -339,17 +324,6 @@ pub fn isobands(
     } else {
         _isobands_raw(data, thresholds)
     }
-}
-
-fn empty_cell_grid(li: usize, lj: usize) -> Vec<Vec<Option<Cell>>> {
-    let mut cell_grid: Vec<Vec<Option<Cell>>> = Vec::with_capacity(li - 1);
-    for i in 0..li - 1 {
-        cell_grid.push(Vec::with_capacity(lj - 1));
-        for _j in 0..lj - 1 {
-            cell_grid[i].push(None);
-        }
-    }
-    cell_grid
 }
 
 fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
