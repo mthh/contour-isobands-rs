@@ -4,6 +4,8 @@
 
 - Use more idiomatic code for `area` and `contains` functions.
 
+- Don't store `cval` on `Cell` struct.
+
 - Avoid pulling and compiling serde_json when the `geojson` feature is not enabled.
 
 - Improve documentation and README.

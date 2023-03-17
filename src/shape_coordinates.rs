@@ -1491,7 +1491,7 @@ pub(crate) fn prepare_cell(
     opt: &Settings,
 ) -> Result<Option<Cell>> {
     /*  compose the 4-trit corner representation */
-    let mut cval = 0;
+    let mut cval: u8 = 0;
     let x3 = *data.get(&(x, y + 1)).unwrap_or(&f64::NAN);
     let x2 = *data.get(&(x + 1, y + 1)).unwrap_or(&f64::NAN);
     let x1 = *data.get(&(x + 1, y)).unwrap_or(&f64::NAN);
@@ -1573,7 +1573,7 @@ pub(crate) fn prepare_cell(
     let mut cell = Cell {
         // x,
         // y,
-        cval,
+        // cval,
         x0,
         x1,
         x2,
@@ -1584,7 +1584,7 @@ pub(crate) fn prepare_cell(
     // I tried storing the functions in a hashmap (FxHashMap) and in a Vec
     // but none of them were faster than the match statement
     // (which I decided to keep for now for readability).
-    match cell.cval {
+    match cval {
         0 | 170 => {} /* 0000 or 2222 */
         85 => {
             /* 1111 */
@@ -2304,7 +2304,7 @@ mod test {
 //     };
 // }
 // lazy_static! {
-//     static ref CVAL_MAP: HashMap<usize, fn(&mut Cell, &Settings), BuildHasherDefault<FxHasher>> = {
+//     static ref CVAL_MAP: HashMap<u8, fn(&mut Cell, &Settings), BuildHasherDefault<FxHasher>> = {
 //         let mut m = FxHashMap::default();
 //         m.insert(0, no_op as fn(&mut Cell, &Settings));
 //         m.insert(170, no_op as fn(&mut Cell, &Settings));

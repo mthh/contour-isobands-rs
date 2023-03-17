@@ -69,12 +69,12 @@ impl Band {
 
 #[derive(Debug)]
 pub(crate) struct Cell {
-    pub cval: usize,
     pub x0: f64,
     pub x1: f64,
     pub x2: f64,
     pub x3: f64,
     pub edges: FxHashMap<EnterType, Edge>,
+    // pub cval: u8,
     // pub x: usize,
     // pub y: usize,
 }
