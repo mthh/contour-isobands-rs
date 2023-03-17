@@ -88,6 +88,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         );
         assert!(res.is_err());
     }
@@ -97,7 +98,7 @@ mod tests {
         let matrix = vec![vec![1., 1.], vec![1., 5.]];
         let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
-        let res = isobands(&matrix, &vec![2.], false, width, height);
+        let res = isobands(&matrix, &vec![2.], false, width, height, false);
         assert!(res.is_err());
     }
 
@@ -106,7 +107,7 @@ mod tests {
         let matrix: Vec<Vec<f64>> = vec![vec![1., 1.], vec![1., 5., 5.]];
         let (matrix, width, height) = make_grid_from2d_vec(&matrix);
 
-        let res = isobands(&matrix, &vec![1., 3.], false, width, height);
+        let res = isobands(&matrix, &vec![1., 3.], false, width, height, false);
         assert!(res.is_err());
     }
 
@@ -124,6 +125,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -158,6 +160,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -212,6 +215,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -312,6 +316,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -376,6 +381,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -433,7 +439,7 @@ mod tests {
 
         let intervals = vec![3., 5., 7.];
 
-        let res = isobands(&matrix, &intervals, false, width, height).unwrap();
+        let res = isobands(&matrix, &intervals, false, width, height, false).unwrap();
 
         assert_eq!(res.len(), 2);
 
@@ -548,6 +554,7 @@ mod tests {
             false,
             width,
             height,
+            false,
         )
         .unwrap();
         let res2 = isobands(
@@ -556,6 +563,7 @@ mod tests {
             true,
             width,
             height,
+            false,
         )
         .unwrap();
 
@@ -581,8 +589,8 @@ mod tests {
             165., 170., 175., 180., 185., 190., 195., 200.,
         ];
 
-        let res1 = isobands(&matrix, &intervals, false, w, h).unwrap();
-        let res2 = isobands(&matrix, &intervals, true, w, h).unwrap();
+        let res1 = isobands(&matrix, &intervals, false, w, h, false).unwrap();
+        let res2 = isobands(&matrix, &intervals, true, w, h, false).unwrap();
 
         assert_eq!(res1, res2);
     }
@@ -607,8 +615,8 @@ mod tests {
             6328995., 7383827.5, 8438660., 9704459., 10548326.,
         ];
 
-        let res1 = isobands(&matrix, &intervals, false, w, h).unwrap();
-        let res2 = isobands(&matrix, &intervals, true, w, h).unwrap();
+        let res1 = isobands(&matrix, &intervals, false, w, h, false).unwrap();
+        let res2 = isobands(&matrix, &intervals, true, w, h, false).unwrap();
 
         assert_eq!(res1, res2);
     }

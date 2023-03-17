@@ -8,6 +8,9 @@ use crate::utils::{empty_cell_grid, is_winding_correct};
 use geo_types::{LineString, MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
+
 /// A point, as a tuple, where the first element is the x coordinate
 /// and the second is the y coordinate.
 #[derive(Debug, Clone, PartialEq)]
@@ -192,6 +195,7 @@ impl ContourBuilder {
             self.use_quad_tree,
             self.width,
             self.height,
+            false,
         )?;
 
         // Build a MultiPolygon for each band
@@ -199,100 +203,134 @@ impl ContourBuilder {
         let res = bands
             .into_iter()
             .map(|(raw_band, min_v, max_v)| {
-                // First, convert the isobands paths to LineStrings
-                let rings: Vec<LineString<f64>> = raw_band
-                    .into_iter()
-                    .map(|mut points| {
-                        if (self.x_origin, self.y_origin) != (0f64, 0f64)
-                            || (self.x_step, self.y_step) != (1f64, 1f64)
-                        {
-                            // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
-                            // if they are not the default values
-                            points.iter_mut().for_each(|point| {
-                                let pt_x = point.x_mut();
-                                *pt_x = self.x_origin + *pt_x * self.x_step;
-                                let pt_y = point.y_mut();
-                                *pt_y = self.y_origin + *pt_y * self.y_step;
-                            });
-                        }
-                        // Sometimes paths have repeated points, so we remove them
-                        points.dedup();
-                        points.into()
-                    })
-                    // We dont want 'empty' rings
-                    .filter(|ring: &LineString| ring.0.len() > 2)
-                    .collect::<Vec<LineString<f64>>>();
-
-                // Then we compute how many times a ring is enclosed by another ring
-                let mut enclosed_by_n = FxHashMap::default();
-
-                for (i, ring) in rings.iter().enumerate() {
-                    let mut enclosed_by_j = 0;
-                    for (j, ring_test) in rings.iter().enumerate() {
-                        if i == j {
-                            continue;
-                        }
-                        if contains(&ring_test.0, &ring.0) {
-                            enclosed_by_j += 1;
-                        }
-                    }
-                    enclosed_by_n.insert(i, enclosed_by_j);
-                }
-
-                // We now need to reconstruct the polygons from the rings
-                let mut polygons: Vec<Polygon<f64>> = Vec::new();
-                let mut interior_rings: Vec<LineString<f64>> = Vec::new();
-
-                // First we separate the exterior rings from the interior rings
-                for (i, mut ring) in rings.into_iter().enumerate() {
-                    let enclosed_by_i = enclosed_by_n.get(&i).unwrap();
-                    // Rings that are enclosed by 0 other ring are Polygon exterior rings.
-                    // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
-                    // Rings that are enclosed by 2 other rings are (new) Polygon exterior rings.
-                    // And so on...
-                    if *enclosed_by_i % 2 == 0 {
-                        // This is an exterior ring
-                        // We want it to be counter-clockwise
-                        if !is_winding_correct(&ring.0, true) {
-                            ring.0.reverse();
-                        }
-                        polygons.push(Polygon::new(ring, vec![]));
-                    } else {
-                        // This is an interior ring
-                        // We want it to be clockwise
-                        if !is_winding_correct(&ring.0, false) {
-                            ring.0.reverse();
-                        }
-                        interior_rings.push(ring);
-                    }
-                }
-
-                // Then, for each interior ring, we find the exterior ring that encloses it
-                // and add it to the polygon
-                for interior_ring in interior_rings.into_iter() {
-                    let mut found = false;
-                    for polygon in polygons.iter_mut() {
-                        if contains(&polygon.exterior().0, &interior_ring.0) {
-                            polygon.interiors_push(interior_ring);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if !found {
-                        // This should never happen...
-                        return Err(new_error(ErrorKind::PolygonReconstructionError));
-                    }
-                }
-
-                Ok(Band {
-                    geometry: polygons.into(),
-                    min_v,
-                    max_v,
-                })
+                self.convert_rings_to_multipolygon(raw_band, min_v, max_v)
             })
             .collect::<Result<Vec<Band>>>()?;
 
         Ok(res)
+    }
+
+    /// Generates contour MultiPolygons for the given data and thresholds.
+    #[cfg(feature = "parallel")]
+    pub fn par_contours(&self, data: &[f64], thresholds: &[f64]) -> Result<Vec<Band>> {
+        // Generate the paths for each threshold (returned as a Vec of BandRaw)
+        let bands = isobands(
+            data,
+            thresholds,
+            self.use_quad_tree,
+            self.width,
+            self.height,
+            true,
+        )?;
+
+        // Build a MultiPolygon for each band
+        // and returns a Vec of Band
+        let res = bands
+            .into_par_iter()
+            .map(|(raw_band, min_v, max_v)| {
+                self.convert_rings_to_multipolygon(raw_band, min_v, max_v)
+            })
+            .collect::<Result<Vec<Band>>>()?;
+
+        Ok(res)
+    }
+
+    fn convert_rings_to_multipolygon(
+        &self,
+        raw_band: Vec<Vec<Point<f64>>>,
+        min_v: f64,
+        max_v: f64,
+    ) -> Result<Band> {
+        // First, convert the isobands paths to LineStrings
+        let rings: Vec<LineString<f64>> = raw_band
+            .into_iter()
+            .map(|mut points| {
+                if (self.x_origin, self.y_origin) != (0f64, 0f64)
+                    || (self.x_step, self.y_step) != (1f64, 1f64)
+                {
+                    // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+                    // if they are not the default values
+                    points.iter_mut().for_each(|point| {
+                        let pt_x = point.x_mut();
+                        *pt_x = self.x_origin + *pt_x * self.x_step;
+                        let pt_y = point.y_mut();
+                        *pt_y = self.y_origin + *pt_y * self.y_step;
+                    });
+                }
+                // Sometimes paths have repeated points, so we remove them
+                points.dedup();
+                points.into()
+            })
+            // We dont want 'empty' rings
+            .filter(|ring: &LineString| ring.0.len() > 2)
+            .collect::<Vec<LineString<f64>>>();
+
+        // Then we compute how many times a ring is enclosed by another ring
+        let mut enclosed_by_n = FxHashMap::default();
+
+        for (i, ring) in rings.iter().enumerate() {
+            let mut enclosed_by_j = 0;
+            for (j, ring_test) in rings.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+                if contains(&ring_test.0, &ring.0) {
+                    enclosed_by_j += 1;
+                }
+            }
+            enclosed_by_n.insert(i, enclosed_by_j);
+        }
+
+        // We now need to reconstruct the polygons from the rings
+        let mut polygons: Vec<Polygon<f64>> = Vec::new();
+        let mut interior_rings: Vec<LineString<f64>> = Vec::new();
+
+        // First we separate the exterior rings from the interior rings
+        for (i, mut ring) in rings.into_iter().enumerate() {
+            let enclosed_by_i = enclosed_by_n.get(&i).unwrap();
+            // Rings that are enclosed by 0 other ring are Polygon exterior rings.
+            // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
+            // Rings that are enclosed by 2 other rings are (new) Polygon exterior rings.
+            // And so on...
+            if *enclosed_by_i % 2 == 0 {
+                // This is an exterior ring
+                // We want it to be counter-clockwise
+                if !is_winding_correct(&ring.0, true) {
+                    ring.0.reverse();
+                }
+                polygons.push(Polygon::new(ring, vec![]));
+            } else {
+                // This is an interior ring
+                // We want it to be clockwise
+                if !is_winding_correct(&ring.0, false) {
+                    ring.0.reverse();
+                }
+                interior_rings.push(ring);
+            }
+        }
+
+        // Then, for each interior ring, we find the exterior ring that encloses it
+        // and add it to the polygon
+        for interior_ring in interior_rings.into_iter() {
+            let mut found = false;
+            for polygon in polygons.iter_mut() {
+                if contains(&polygon.exterior().0, &interior_ring.0) {
+                    polygon.interiors_push(interior_ring);
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                // This should never happen...
+                return Err(new_error(ErrorKind::PolygonReconstructionError));
+            }
+        }
+
+        Ok(Band {
+            geometry: polygons.into(),
+            min_v,
+            max_v,
+        })
     }
 }
 
@@ -307,6 +345,7 @@ pub fn isobands(
     use_quad_tree: bool,
     width: usize,
     height: usize,
+    _parallel: bool,
 ) -> Result<Vec<BandRaw>> {
     if data.is_empty() {
         return Err(new_error(ErrorKind::BadData));
@@ -319,6 +358,22 @@ pub fn isobands(
     }
 
     let data = BorrowedGrid::new(data, width, height);
+
+    #[cfg(feature = "parallel")]
+    if _parallel {
+        if use_quad_tree {
+            _isobands_parallel_quadtree_raw(data, thresholds)
+        } else {
+            _isobands_parallel_raw(data, thresholds)
+        }
+    } else {
+        if use_quad_tree {
+            _isobands_quadtree_raw(data, thresholds)
+        } else {
+            _isobands_raw(data, thresholds)
+        }
+    }
+    #[cfg(not(feature = "parallel"))]
     if use_quad_tree {
         _isobands_quadtree_raw(data, thresholds)
     } else {
@@ -348,6 +403,47 @@ fn _isobands_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<Band
                     max - PRECISION
                 },
             };
+
+            // Fill up the grid with cell information
+            cell_grid.iter_mut().enumerate().try_for_each(|(i, row)| {
+                row.iter_mut().enumerate().try_for_each(|(j, cell)| {
+                    *cell = prepare_cell(i, j, &data, &opt)?;
+                    Ok::<(), Error>(())
+                })
+            })?;
+
+            let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
+            Ok((band_polygons, min, max))
+        })
+        .collect::<Result<Vec<BandRaw>>>()?;
+
+    Ok(res)
+}
+
+#[cfg(feature = "parallel")]
+fn _isobands_parallel_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result<Vec<BandRaw>> {
+    let lj = data.height();
+    let li = data.width();
+    let n_pair_thresholds = thresholds.len() - 1;
+
+    let res = thresholds
+        .iter()
+        .zip(thresholds.iter().skip(1))
+        .enumerate()
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .map(|(i, (&min, &max))| -> Result<BandRaw> {
+            // Store min / max values for the current band
+            let opt = Settings {
+                min_v: min,
+                max_v: if i + 1 == n_pair_thresholds {
+                    max
+                } else {
+                    max - PRECISION
+                },
+            };
+
+            let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
 
             // Fill up the grid with cell information
             cell_grid.iter_mut().enumerate().try_for_each(|(i, row)| {
@@ -399,6 +495,51 @@ fn _isobands_quadtree_raw(data: BorrowedGrid<f64>, thresholds: &[f64]) -> Result
                     })
                 });
             }
+
+            // Fill up the grid with cell information
+            for (i, j) in tree.cells_in_band(opt.min_v, opt.max_v) {
+                cell_grid[i][j] = prepare_cell(i, j, &data, &opt)?;
+            }
+
+            let band_polygons = trace_band_paths(&data, &mut cell_grid, &opt)?;
+
+            Ok((band_polygons, min, max))
+        })
+        .collect::<Result<Vec<BandRaw>>>()?;
+
+    Ok(res)
+}
+
+#[cfg(feature = "parallel")]
+fn _isobands_parallel_quadtree_raw(
+    data: BorrowedGrid<f64>,
+    thresholds: &[f64],
+) -> Result<Vec<BandRaw>> {
+    let lj = data.height();
+    let li = data.width();
+    let n_pair_thresholds = thresholds.len() - 1;
+
+    // Instantiate the quadtree
+    let tree = QuadTree::new(&data);
+
+    let res = thresholds
+        .iter()
+        .zip(thresholds.iter().skip(1))
+        .enumerate()
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .map(|(i, (&min, &max))| -> Result<BandRaw> {
+            // Store min / max values for the current band
+            let opt = Settings {
+                min_v: min,
+                max_v: if i + 1 == n_pair_thresholds {
+                    max
+                } else {
+                    max - PRECISION
+                },
+            };
+
+            let mut cell_grid: Vec<Vec<Option<Cell>>> = empty_cell_grid(li, lj);
 
             // Fill up the grid with cell information
             for (i, j) in tree.cells_in_band(opt.min_v, opt.max_v) {

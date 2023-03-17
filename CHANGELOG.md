@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+- Add new `par_contours` method to `ContourBuilder` to generate contours in parallel (only available with the `parallel` feature flag).
+
 - Use more idiomatic code for `area` and `contains` functions.
 
 - Don't store `cval` on `Cell` struct.
