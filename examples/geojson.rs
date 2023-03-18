@@ -4,8 +4,10 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 fn main() {
-    let volcano_str = include_str!("../tests/fixtures/pot_pop_fr.json");
-    let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
+    // First example, from a grid of points
+    // on which were computed the population potentials in Metropolitan France
+    let pot_pop_fr = include_str!("../tests/fixtures/pot_pop_fr.json");
+    let raw_data: serde_json::Value = serde_json::from_str(pot_pop_fr).unwrap();
     let matrix: Vec<f64> = raw_data["data"]
         .as_array()
         .unwrap()
@@ -46,6 +48,43 @@ fn main() {
     })
     .to_string();
 
-    let mut file_writer = BufWriter::new(File::create("/tmp/example-output.geojson").unwrap());
+    let mut file_writer = BufWriter::new(File::create("/tmp/example-pot_pop_fr.geojson").unwrap());
+    file_writer.write(&geojson_str.as_bytes()).unwrap();
+
+    // Second example from the volcano dataset
+    let volcano = include_str!("../tests/fixtures/volcano.json");
+    let raw_data: serde_json::Value = serde_json::from_str(volcano).unwrap();
+    let matrix: Vec<f64> = raw_data["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_f64().unwrap())
+        .collect();
+    let h = raw_data["height"].as_u64().unwrap() as usize;
+    let w = raw_data["width"].as_u64().unwrap() as usize;
+
+    let contours = ContourBuilder::new(w, h)
+        .contours(
+            &matrix,
+            &[
+                90., 95., 100., 105., 110., 115., 120., 125., 130., 135., 140., 145., 150., 155.,
+                160., 165., 170., 175., 180., 185., 190., 195., 200.,
+            ],
+        )
+        .unwrap();
+
+    let features = contours
+        .iter()
+        .map(|band| band.to_geojson())
+        .collect::<Vec<geojson::Feature>>();
+
+    let geojson_str = GeoJson::from(FeatureCollection {
+        bbox: None,
+        features,
+        foreign_members: None,
+    })
+    .to_string();
+
+    let mut file_writer = BufWriter::new(File::create("/tmp/example-volcano.geojson").unwrap());
     file_writer.write(&geojson_str.as_bytes()).unwrap();
 }

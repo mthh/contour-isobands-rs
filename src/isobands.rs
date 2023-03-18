@@ -8,6 +8,7 @@ use crate::utils::{empty_cell_grid, is_winding_correct};
 use geo_types::{LineString, MultiPolygon, Point, Polygon};
 use rustc_hash::FxHashMap;
 
+use crate::area::area;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -136,6 +137,8 @@ pub struct ContourBuilder {
     y_step: f64,
     /// Whether to use a quadtree
     use_quad_tree: bool,
+    /// Winding order
+    ensure_rings_orientation: bool,
 }
 
 impl ContourBuilder {
@@ -153,6 +156,7 @@ impl ContourBuilder {
             x_step: 1f64,
             y_step: 1f64,
             use_quad_tree: false,
+            ensure_rings_orientation: true,
         }
     }
 
@@ -183,6 +187,12 @@ impl ContourBuilder {
     /// Sets whether to use a quadtree.
     pub fn use_quad_tree(mut self, use_quad_tree: bool) -> Self {
         self.use_quad_tree = use_quad_tree;
+        self
+    }
+
+    /// Sets whether to ensure the winding order of the rings.
+    pub fn ensure_rings_orientation(mut self, ensure_rings_orientation: bool) -> Self {
+        self.ensure_rings_orientation = ensure_rings_orientation;
         self
     }
 
@@ -242,7 +252,7 @@ impl ContourBuilder {
         max_v: f64,
     ) -> Result<Band> {
         // First, convert the isobands paths to LineStrings
-        let rings: Vec<LineString<f64>> = raw_band
+        let mut rings: Vec<(LineString<f64>, f64)> = raw_band
             .into_iter()
             .map(|mut points| {
                 if (self.x_origin, self.y_origin) != (0f64, 0f64)
@@ -259,18 +269,30 @@ impl ContourBuilder {
                 }
                 // Sometimes paths have repeated points, so we remove them
                 points.dedup();
-                points.into()
+                points
             })
             // We dont want 'empty' rings
-            .filter(|ring: &LineString| ring.0.len() > 2)
-            .collect::<Vec<LineString<f64>>>();
+            .filter(|potential_ring| potential_ring.len() > 2)
+            // We compute the area now as we will need it to sort the rings
+            // (+ also later to check if a ring is clockwise or not)
+            .map(|points| {
+                let closed_linestring: LineString = points.into();
+                let area = area(&closed_linestring.0);
+                (closed_linestring, area)
+            })
+            .collect::<Vec<(LineString<f64>, f64)>>();
+
+        // We sort by absolute area, so that the smallest rings are first
+        // (this will help later when we reconstruct the polygons by checking which rings are enclosed by others
+        // in for rings enclosed by more than one other ring, we will keep the smallest one)
+        rings.sort_by_key(|(_, area)| area.abs() as u64);
 
         // Then we compute how many times a ring is enclosed by another ring
         let mut enclosed_by_n = FxHashMap::default();
 
-        for (i, ring) in rings.iter().enumerate() {
+        for (i, (ring, _)) in rings.iter().enumerate() {
             let mut enclosed_by_j = 0;
-            for (j, ring_test) in rings.iter().enumerate() {
+            for (j, (ring_test, _)) in rings.iter().enumerate() {
                 if i == j {
                     continue;
                 }
@@ -286,7 +308,7 @@ impl ContourBuilder {
         let mut interior_rings: Vec<LineString<f64>> = Vec::new();
 
         // First we separate the exterior rings from the interior rings
-        for (i, mut ring) in rings.into_iter().enumerate() {
+        for (i, (mut ring, ring_area)) in rings.into_iter().enumerate() {
             let enclosed_by_i = enclosed_by_n.get(&i).unwrap();
             // Rings that are enclosed by 0 other ring are Polygon exterior rings.
             // Rings that are enclosed by 1 other ring are Polygon interior rings (holes).
@@ -295,14 +317,14 @@ impl ContourBuilder {
             if *enclosed_by_i % 2 == 0 {
                 // This is an exterior ring
                 // We want it to be counter-clockwise
-                if !is_winding_correct(&ring.0, true) {
+                if self.ensure_rings_orientation && !is_winding_correct(ring_area, true) {
                     ring.0.reverse();
                 }
                 polygons.push(Polygon::new(ring, vec![]));
             } else {
                 // This is an interior ring
                 // We want it to be clockwise
-                if !is_winding_correct(&ring.0, false) {
+                if self.ensure_rings_orientation && !is_winding_correct(ring_area, false) {
                     ring.0.reverse();
                 }
                 interior_rings.push(ring);
@@ -310,7 +332,9 @@ impl ContourBuilder {
         }
 
         // Then, for each interior ring, we find the exterior ring that encloses it
-        // and add it to the polygon
+        // and add it to the polygon.
+        // Due to sorting by area sooner, we should push the interior ring to the appropriate polygon
+        // (in case of polygon with hole contained in another polygon with hole).
         for interior_ring in interior_rings.into_iter() {
             let mut found = false;
             for polygon in polygons.iter_mut() {
@@ -325,6 +349,12 @@ impl ContourBuilder {
                 return Err(new_error(ErrorKind::PolygonReconstructionError));
             }
         }
+
+        // Finally, we reverse the polygons so that they are in the right order
+        // (this is because we sorted by area earlier,
+        //  and otherwise some geos validity check can fail if Polygon 0
+        //  of a MultiPolygon is inside the hole of the Polygon 1)
+        polygons.reverse();
 
         Ok(Band {
             geometry: polygons.into(),

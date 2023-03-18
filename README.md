@@ -8,7 +8,9 @@ between two given values)* by applying marching squares to an array of values.
 
 ![](https://raw.githubusercontent.com/mthh/contour-isobands-rs/main/illustration.png)
 
-### Usage
+## Usage
+
+### Basics
 
 Add the following to your `Cargo.toml`:
 
@@ -43,6 +45,23 @@ let result: Vec<Band> = ContourBuilder::new(7, 6)
 
 assert_eq!(result.len(), 3);
 ```
+
+The result is a vector of `Band` structs, each one containing a geometry (`MultiPolygon<f64>`) and the minimum and maximum values of the band.
+
+Note that you can specify the coordinates of the grid and the distance between points (on x- and y-axis)
+using the `x_origin`, `y_origin`, `x_step` and `y_step` parameters of the `ContourBuilder` constructor :
+
+```rust
+let result: Vec<Band> = ContourBuilder::new(7, 6)
+    .x_origin(-6.144721)
+    .y_origin(51.781713)
+    .x_step(0.118759)
+    .y_step(-0.089932)
+    .use_quad_tree(true)
+    .contours(&values, &intervals)?;
+```
+
+### `geojson` feature
 
 Each `Band` struct contains a geometry (`MultiPolygon<f64>`) and the minimum and maximum values of the band.
 It can be serialized to geojson using the `geojson` feature:
@@ -83,8 +102,19 @@ let geojson_string = GeoJson::from(
     }).to_string();
 ```
 
-Note that you can specify the coordinates of the grid and the distance between points (on x- and y-axis)
-using the `x_origin`, `y_origin`, `x_step` and `y_step` parameters of the `ContourBuilder` constructor :
+Note that the polygons exterior rings are oriented in the counter-clockwise direction,
+while the interior rings are oriented in the clockwise direction
+(in accordance with the GeoJSON RFC 7946 specification).
+
+### `parallel` feature
+
+```toml
+[dependencies]
+contour-isobands = { version = "0.2.0", features = ["parallel"] }
+```
+
+The `parallel` feature enables the use of the `rayon` crate to parallelize the computation of the isobands.
+By enabling this feature, the `ContourBuilder` struct exposes a `par_contours` method :
 
 ```rust
 let result: Vec<Band> = ContourBuilder::new(7, 6)
@@ -93,14 +123,18 @@ let result: Vec<Band> = ContourBuilder::new(7, 6)
     .x_step(0.118759)
     .y_step(-0.089932)
     .use_quad_tree(true)
-    .contours(&values, &intervals)?;
+    .par_contours(&values, &intervals)?;
 ```
 
-### WASM demo
+Note that you can still use the `contours` method if you don't want
+to use parallelism (indeed, on small grids, the overhead of parallelism can be higher than the gain).
+
+
+## WASM demo
 
 A demo of this crate, compiled to WebAssembly, is available on [https://mthh.github.io/contour-isobands-wasm/](https://mthh.github.io/contour-isobands-wasm/).
 
-### Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
+## Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
 
 While the [contour](https://crates.io/crates/contour) crate computes *__isolines__*
 (cf. [wikipedia:Marching_squares](https://en.wikipedia.org/wiki/Marching_squares)) and
@@ -110,7 +144,7 @@ corresponding polygons *(i.e. contour polygons that contain all points between a
 
 Depending on the desired use of the result, this `contour-isobands` crate may be more suitable than the `contour` crate (for example to visualize results with an opacity lower than 100%).
 
-### Licence
+## Licence
 
 Since this is mostly a port of [https://github.com/RaumZeit/MarchingSquares.js](https://github.com/RaumZeit/MarchingSquares.js) which is licenced under the Affero General Public License v3.0, this project is also licenced under the Affero General Public License v3.0.
 See the [LICENSE](LICENSE) file for details.

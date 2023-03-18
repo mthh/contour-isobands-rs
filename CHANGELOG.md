@@ -4,6 +4,8 @@
 
 - Add new `par_contours` method to `ContourBuilder` to generate contours in parallel (only available with the `parallel` feature flag).
 
+- Fix assignment of interior rings when a polygon with a hole is contained in the hole of another polygon (on the same band).
+
 - Use more idiomatic code for `area` and `contains` functions.
 
 - Don't store `cval` on `Cell` struct.

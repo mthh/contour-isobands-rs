@@ -599,8 +599,8 @@ mod tests {
     /// Test that isobands returns the same result when using a quadtree or not
     /// (dataset from https://observablehq.com/@mthh/stewarts-potentials-on-the-gpu)
     fn isobands_pot_pop_same_with_quadtree() {
-        let volcano_str = include_str!("../tests/fixtures/pot_pop_fr.json");
-        let raw_data: serde_json::Value = serde_json::from_str(volcano_str).unwrap();
+        let pot_pop = include_str!("../tests/fixtures/pot_pop_fr.json");
+        let raw_data: serde_json::Value = serde_json::from_str(pot_pop).unwrap();
         let matrix: Vec<f64> = raw_data["data"]
             .as_array()
             .unwrap()

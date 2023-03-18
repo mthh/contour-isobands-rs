@@ -1,9 +1,7 @@
-use crate::area::area;
 use crate::isobands::Cell;
-use geo_types::Coord;
 
-pub(crate) fn is_winding_correct(points: &[Coord<f64>], is_exterior: bool) -> bool {
-    let area = area(points);
+#[inline]
+pub(crate) fn is_winding_correct(area: f64, is_exterior: bool) -> bool {
     if is_exterior {
         area > 0f64
     } else {
