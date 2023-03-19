@@ -136,13 +136,16 @@ A demo of this crate, compiled to WebAssembly, is available on [https://mthh.git
 
 ## Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
 
-While the [contour](https://crates.io/crates/contour) crate computes *__isolines__*
+The [contour](https://crates.io/crates/contour) crate computes isolines
 (cf. [wikipedia:Marching_squares](https://en.wikipedia.org/wiki/Marching_squares)) and
-their corresponding polygons *(i.e. polygons that contain all points above the threshold defined for a given isoline)*,
-`contour-isobands-rs` computes *__isobands__* (cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands)) and their
-corresponding polygons *(i.e. contour polygons that contain all points between a minimum and a maximum bound)*.
-
-Depending on the desired use of the result, this `contour-isobands` crate may be more suitable than the `contour` crate (for example to visualize results with an opacity lower than 100%).
+use them to compute their corresponding contour polygons *(i.e. polygons that contain all points above the threshold defined
+for a given isoline)* and isobands *(i.e. contour polygons that contain all points between
+a minimum and a maximum bound)*.
+This `contour-isobands-rs` is dedicated to isobands, also uses marching squares
+(cf. [wikipedia:Marching_squares#Isobands](https://en.wikipedia.org/wiki/Marching_squares#Isobands))
+but uses a slightly different implementation for the disambiguation of saddle points.
+It also offers parallel computation of isobands using the `rayon` crate, which can be beneficial
+when computing isobands on large grids and with many thresholds.
 
 ## Licence
 
