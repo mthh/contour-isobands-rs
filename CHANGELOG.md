@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased
+### 0.3.0 (2023-03-20)
 
 - Add new `par_contours` method to `ContourBuilder` to generate contours in parallel (only available with the `parallel` feature flag).
 
