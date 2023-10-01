@@ -255,11 +255,18 @@ impl ContourBuilder {
         let mut rings: Vec<(LineString<f64>, f64)> = raw_band
             .into_iter()
             .map(|mut points| {
+                // Sometimes paths have repeated points, so we remove them first
+                points.dedup();
+                points
+            })
+            // We dont want 'empty' rings
+            .filter(|potential_ring| potential_ring.len() > 2)
+            .map(|mut points| {
+                // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
+                // if they are not the default values
                 if (self.x_origin, self.y_origin) != (0f64, 0f64)
                     || (self.x_step, self.y_step) != (1f64, 1f64)
                 {
-                    // Use x_origin, y_origin, x_step and y_step to calculate the coordinates of the points
-                    // if they are not the default values
                     points.iter_mut().for_each(|point| {
                         let pt_x = point.x_mut();
                         *pt_x = self.x_origin + *pt_x * self.x_step;
@@ -267,15 +274,9 @@ impl ContourBuilder {
                         *pt_y = self.y_origin + *pt_y * self.y_step;
                     });
                 }
-                // Sometimes paths have repeated points, so we remove them
-                points.dedup();
-                points
-            })
-            // We dont want 'empty' rings
-            .filter(|potential_ring| potential_ring.len() > 2)
-            // We compute the area now as we will need it to sort the rings
-            // (+ also later to check if a ring is clockwise or not)
-            .map(|points| {
+
+                // We also compute the area now as we will need it to sort the rings
+                // (+ also later to check if a ring is clockwise or not)
                 let closed_linestring: LineString = points.into();
                 let area = area(&closed_linestring.0);
                 (closed_linestring, area)
