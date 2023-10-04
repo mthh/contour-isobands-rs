@@ -16,7 +16,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-contour-isobands = "0.3.0"
+contour-isobands = "0.3.1"
 ```
 
 Then, you can use the `ContourBuilder` to compute isobands:
