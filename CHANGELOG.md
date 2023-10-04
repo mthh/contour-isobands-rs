@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased changes
+### 0.3.1 (2023-10-04)
 
 - Slightly improve performance of `ContourBuilder::contours` / `ContourBuilder::par_contours` methods.
 
