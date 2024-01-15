@@ -105,7 +105,7 @@ macro_rules! check_out_of_grid {
 
 pub(crate) fn trace_band_paths(
     data: &BorrowedGrid<f64>,
-    cell_grid: &mut Vec<Vec<Option<Cell>>>,
+    cell_grid: &mut [Vec<Option<Cell>>],
     opt: &Settings,
 ) -> Result<Vec<Vec<Point<f64>>>> {
     let mut polygons: Vec<Vec<Point<f64>>> = Vec::new();
