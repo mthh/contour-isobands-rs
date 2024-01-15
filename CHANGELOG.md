@@ -1,8 +1,16 @@
 # Changelog
 
+### 0.4.0 (2024-01-15)
+
+- Change the 'precision' value used to distinguish between two contiguous bands.
+
+- Simplify some minor stuff in `trance_band_paths` function.
+
+
 ### 0.3.1 (2023-10-04)
 
 - Slightly improve performance of `ContourBuilder::contours` / `ContourBuilder::par_contours` methods.
+
 
 ### 0.3.0 (2023-03-20)
 
