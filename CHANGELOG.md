@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.4.1 (2024-01-15)
+
+- Fix README.
+
 ### 0.4.0 (2024-01-15)
 
 - Change the 'precision' value used to distinguish between two contiguous bands.

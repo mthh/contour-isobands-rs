@@ -16,7 +16,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-contour-isobands = "0.3.1"
+contour-isobands = "0.4.1"
 ```
 
 Then, you can use the `ContourBuilder` to compute isobands:
@@ -68,7 +68,7 @@ It can be serialized to geojson using the `geojson` feature:
 
 ```toml
 [dependencies]
-contour-isobands = { version = "0.3.1", features = ["geojson"] }
+contour-isobands = { version = "0.4.1", features = ["geojson"] }
 ```
 
 ```rust
@@ -110,7 +110,7 @@ while the interior rings are oriented in the clockwise direction
 
 ```toml
 [dependencies]
-contour-isobands = { version = "0.3.1", features = ["parallel"] }
+contour-isobands = { version = "0.4.1", features = ["parallel"] }
 ```
 
 The `parallel` feature enables the use of the `rayon` crate to parallelize the computation of the isobands.

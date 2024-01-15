@@ -1,6 +1,6 @@
 [package]
 name = "contour-isobands"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Matthieu Viry <matthieu.viry@cnrs.fr>"]
 edition = "2021"
 license = "AGPL-3.0-or-later"
