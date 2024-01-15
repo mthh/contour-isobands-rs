@@ -114,7 +114,7 @@ pub(crate) struct Settings {
     pub max_v: f64,
 }
 
-static PRECISION: f64 = 1e-4;
+static PRECISION: f64 = f64::MIN_POSITIVE;
 
 /// Contours generator, using builder pattern, to
 /// be used on a rectangular `Slice` of values to

@@ -447,27 +447,6 @@ mod tests {
             res[0].0,
             vec![
                 vec![
-                    Point::new(0.9999750000000001, 1.0),
-                    Point::new(1.0, 0.9999750000000001),
-                    Point::new(2.0, 0.9999750000000001),
-                    Point::new(3.0, 0.9999750000000001),
-                    Point::new(4.0, 0.9999750000000001),
-                    Point::new(5.0, 0.9999750000000001),
-                    Point::new(5.000025, 1.0),
-                    Point::new(5.000025, 2.0),
-                    Point::new(5.000025, 3.0),
-                    Point::new(5.000025, 4.0),
-                    Point::new(5.0, 4.000025),
-                    Point::new(4.0, 4.000025),
-                    Point::new(3.0, 4.000025),
-                    Point::new(2.0, 4.000025),
-                    Point::new(1.0, 4.000025),
-                    Point::new(0.9999750000000001, 4.0),
-                    Point::new(0.9999750000000001, 3.0),
-                    Point::new(0.9999750000000001, 2.0),
-                    Point::new(0.9999750000000001, 1.0)
-                ],
-                vec![
                     Point::new(1.0, 0.5),
                     Point::new(0.5, 1.0),
                     Point::new(0.5, 2.0),
@@ -486,7 +465,20 @@ mod tests {
                     Point::new(4.0, 0.5),
                     Point::new(3.0, 0.5),
                     Point::new(2.0, 0.5),
-                    Point::new(1.0, 0.5)
+                    Point::new(1.0, 0.5),
+                ],
+                vec![
+                    Point::new(1.0, 2.0),
+                    Point::new(2.0, 1.0),
+                    Point::new(3.0, 1.0),
+                    Point::new(4.0, 1.0),
+                    Point::new(5.0, 2.0),
+                    Point::new(5.0, 3.0),
+                    Point::new(4.0, 4.0),
+                    Point::new(3.0, 4.0),
+                    Point::new(2.0, 4.0),
+                    Point::new(1.0, 3.0),
+                    Point::new(1.0, 2.0),
                 ]
             ]
         );
