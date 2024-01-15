@@ -151,142 +151,138 @@ pub(crate) fn trace_band_paths(
             }
             for nextedge in &available_starts {
                 //if let Some(cg) = &cell_grid[i][j] {
-                    let cg = cell_grid[i][j].as_ref().unwrap();
-                    if let Some(edge) = cg.edges.get(nextedge) {
-                        let mut path = Vec::new();
-                        let mut enter = nextedge.clone();
+                let cg = cell_grid[i][j].as_ref().unwrap();
+                if let Some(edge) = cg.edges.get(nextedge) {
+                    let mut path = Vec::new();
+                    let mut enter = nextedge.clone();
 
-                        let mut x = i as i32;
-                        let mut y = j as i32;
-                        let mut finalized = false;
-                        let origin =
-                            Point::new(i as f64 + edge.path[0].0, j as f64 + edge.path[0].1);
+                    let mut x = i as i32;
+                    let mut y = j as i32;
+                    let mut finalized = false;
+                    let origin = Point::new(i as f64 + edge.path[0].0, j as f64 + edge.path[0].1);
 
-                        path.push(origin);
+                    path.push(origin);
 
-                        /* start traceback */
-                        while !finalized {
-                            // We are being extra careful here,
-                            // but I think we can remove this check
-                            if check_out_of_grid!(x, y, cell_grid) {
-                                return Err(new_error(ErrorKind::OutOfBounds));
+                    /* start traceback */
+                    while !finalized {
+                        // We are being extra careful here,
+                        // but I think we can remove this check
+                        if check_out_of_grid!(x, y, cell_grid) {
+                            return Err(new_error(ErrorKind::OutOfBounds));
+                        }
+
+                        // We know that cc is not None here, so we can unwrap it directly
+                        let mut cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
+
+                        /* remove edge from cell */
+                        let mut _ee = cc.edges.remove(&enter);
+                        if _ee.is_none() {
+                            break;
+                        }
+                        let mut ee = &_ee.unwrap();
+
+                        /* add last point of edge to path array, since we extend a polygon */
+                        let point = Point::new(ee.path[1].0 + x as f64, ee.path[1].1 + y as f64);
+                        path.push(point);
+
+                        enter = ee.move_info.enter.clone();
+                        x += ee.move_info.x;
+                        y += ee.move_info.y;
+
+                        /* handle out-of-grid moves */
+                        if check_out_of_grid!(x, y, cell_grid) {
+                            let mut dir;
+                            let mut count = 0;
+
+                            if x == cols as i32 {
+                                x -= 1;
+                                dir = 0; /* move downwards */
+                            } else if x < 0 {
+                                x += 1;
+                                dir = 2; /* move upwards */
+                            } else if y == rows as i32 {
+                                y -= 1;
+                                dir = 3; /* move right */
+                            } else if y < 0 {
+                                y += 1;
+                                dir = 1; /* move left */
+                            } else {
+                                return Err(new_error(ErrorKind::UnexpectedOutOfGridMove));
                             }
 
-                            // We know that cc is not None here, so we can unwrap it directly
-                            let mut cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
-
-                            /* remove edge from cell */
-                            let mut _ee = cc.edges.remove(&enter);
-                            if _ee.is_none() {
+                            if x == i as i32 && y == j as i32 && dir == entry_dir(nextedge) {
+                                // finalized = true;
+                                // enter = nextedge.clone();
                                 break;
                             }
-                            let mut ee = &_ee.unwrap();
 
-                            /* add last point of edge to path array, since we extend a polygon */
-                            let point =
-                                Point::new(ee.path[1].0 + x as f64, ee.path[1].1 + y as f64);
-                            path.push(point);
-
-                            enter = ee.move_info.enter.clone();
-                            x += ee.move_info.x;
-                            y += ee.move_info.y;
-
-                            /* handle out-of-grid moves */
-                            if check_out_of_grid!(x, y, cell_grid) {
-                                let mut dir;
-                                let mut count = 0;
-
-                                if x == cols as i32 {
-                                    x -= 1;
-                                    dir = 0; /* move downwards */
-                                } else if x < 0 {
-                                    x += 1;
-                                    dir = 2; /* move upwards */
-                                } else if y == rows as i32 {
-                                    y -= 1;
-                                    dir = 3; /* move right */
-                                } else if y < 0 {
-                                    y += 1;
-                                    dir = 1; /* move left */
-                                } else {
-                                    return Err(new_error(ErrorKind::UnexpectedOutOfGridMove));
-                                }
-
-                                if x == i as i32 && y == j as i32 && dir == entry_dir(nextedge) {
-                                    // finalized = true;
-                                    // enter = nextedge.clone();
+                            loop {
+                                let mut found_entry = false;
+                                if count > 4 {
+                                    // println!("Direction change counter overflow! This should never happen!");
                                     break;
                                 }
 
-                                loop {
-                                    let mut found_entry = false;
-                                    if count > 4 {
-                                        // println!("Direction change counter overflow! This should never happen!");
-                                        break;
-                                    }
+                                if usize::try_from(x).is_ok()
+                                    && usize::try_from(y).is_ok()
+                                    && cell_grid.get(x as usize).is_some()
+                                    && cell_grid[x as usize].get(y as usize).is_some()
+                                    && cell_grid[x as usize][y as usize].is_some()
+                                {
+                                    cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
 
-                                    if usize::try_from(x).is_ok()
-                                        && usize::try_from(y).is_ok()
-                                        && cell_grid.get(x as usize).is_some()
-                                        && cell_grid[x as usize].get(y as usize).is_some()
-                                        && cell_grid[x as usize][y as usize].is_some()
-                                    {
-                                        cc = cell_grid[x as usize][y as usize].as_mut().unwrap();
-
-                                        /* check for re-entry */
-                                        for s in 0..valid_entries[dir].len() {
-                                            let ve = &valid_entries[dir][s];
-                                            if cc.edges.get(ve).is_some() {
-                                                /* found re-entry */
-                                                ee = cc.edges.get(ve).unwrap();
-                                                path.push(entry_coordinate(x, y, dir, &ee.path));
-                                                enter = ve.clone();
-                                                found_entry = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-
-                                    if found_entry {
-                                        break;
-                                    } else {
-                                        path.push(skip_coordinate(x, y, dir));
-                                        x += add_x[dir];
-                                        y += add_y[dir];
-
-                                        /* change direction if we moved out of grid again */
-                                        if check_out_of_grid!(x, y, cell_grid)
-                                            && (((dir == 0) && (y < 0))
-                                                || ((dir == 1) && (x < 0))
-                                                || ((dir == 2) && (y == rows as i32))
-                                                || ((dir == 3) && (x == cols as i32)))
-                                        {
-                                            x -= add_x[dir];
-                                            y -= add_y[dir];
-
-                                            dir = (dir + 1) % 4;
-                                            count += 1;
-                                        }
-
-                                        if x == i as i32
-                                            && y == j as i32
-                                            && dir == entry_dir(nextedge)
-                                        {
-                                            finalized = true;
-                                            enter = nextedge.clone();
+                                    /* check for re-entry */
+                                    for s in 0..valid_entries[dir].len() {
+                                        let ve = &valid_entries[dir][s];
+                                        if cc.edges.get(ve).is_some() {
+                                            /* found re-entry */
+                                            ee = cc.edges.get(ve).unwrap();
+                                            path.push(entry_coordinate(x, y, dir, &ee.path));
+                                            enter = ve.clone();
+                                            found_entry = true;
                                             break;
                                         }
                                     }
                                 }
+
+                                if found_entry {
+                                    break;
+                                } else {
+                                    path.push(skip_coordinate(x, y, dir));
+                                    x += add_x[dir];
+                                    y += add_y[dir];
+
+                                    /* change direction if we moved out of grid again */
+                                    if check_out_of_grid!(x, y, cell_grid)
+                                        && (((dir == 0) && (y < 0))
+                                            || ((dir == 1) && (x < 0))
+                                            || ((dir == 2) && (y == rows as i32))
+                                            || ((dir == 3) && (x == cols as i32)))
+                                    {
+                                        x -= add_x[dir];
+                                        y -= add_y[dir];
+
+                                        dir = (dir + 1) % 4;
+                                        count += 1;
+                                    }
+
+                                    if x == i as i32 && y == j as i32 && dir == entry_dir(nextedge)
+                                    {
+                                        finalized = true;
+                                        enter = nextedge.clone();
+                                        break;
+                                    }
+                                }
                             }
                         }
-
-                        if path[path.len() - 1].x_y() != origin.x_y() {
-                            path.push(origin);
-                        }
-
-                        polygons.push(path);
                     }
+
+                    if path[path.len() - 1].x_y() != origin.x_y() {
+                        path.push(origin);
+                    }
+
+                    polygons.push(path);
+                }
                 // }
             }
         }
