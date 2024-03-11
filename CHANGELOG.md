@@ -1,8 +1,14 @@
 # Changelog
 
+### 0.4.2 (2024-03-11)
+
+- Fix bug in `area` function. Note that given the use made of this function, it shouldn't have cause issues with the contours created.
+
+
 ### 0.4.1 (2024-01-15)
 
 - Fix README.
+
 
 ### 0.4.0 (2024-01-15)
 

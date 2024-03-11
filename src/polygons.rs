@@ -234,7 +234,7 @@ pub(crate) fn trace_band_paths(
                                     /* check for re-entry */
                                     for s in 0..valid_entries[dir].len() {
                                         let ve = &valid_entries[dir][s];
-                                        if cc.edges.get(ve).is_some() {
+                                        if cc.edges.contains_key(ve) {
                                             /* found re-entry */
                                             ee = cc.edges.get(ve).unwrap();
                                             path.push(entry_coordinate(x, y, dir, &ee.path));
