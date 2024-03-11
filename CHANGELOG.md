@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.4.3 (2024-03-11)
+
+- Change (again) the 'precision' value used to distinguish between two contiguous bands.
+
+
 ### 0.4.2 (2024-03-11)
 
 - Fix bug in `area` function. Note that given the use made of this function, it shouldn't have cause issues with the contours created.
