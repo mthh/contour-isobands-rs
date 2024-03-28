@@ -132,7 +132,7 @@ to use parallelism (indeed, on small grids, the overhead of parallelism can be h
 
 ## WASM demo
 
-A demo of this crate, compiled to WebAssembly, is available on [https://mthh.github.io/contour-wasm/](https://mthh.github.io/contour-isobands-wasm/).
+A demo of this crate, compiled to WebAssembly, is available on [https://mthh.github.io/contour-wasm/](https://mthh.github.io/contour-wasm/).
 
 ## Difference with the [contour](https://crates.io/crates/contour) crate (from [`mthh/contour-rs`](https://github.com/mthh/contour-rs) repository)
 
